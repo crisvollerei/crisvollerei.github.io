@@ -49,7 +49,7 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    body {
+     {
       font-family: 'Noto Sans SC', -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
@@ -58,7 +58,7 @@
       transition: background 0.3s ease, color 0.3s ease;
     }
 
-    body::before {
+    ::before {
       content: '';
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -97,6 +97,32 @@
 
     .theme-toggle:active {
       transform: scale(0.95);
+    }
+    /* 回到今天按钮 */
+    .today-jump-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 48px;
+    height: 48px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      transition: all 0.2s;
+      z-index: 99;
+    }
+    .today-jump-btn:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      transform: scale(1.1);
     }
 
     /* ===== Header ===== */
@@ -527,15 +553,17 @@
 
     /* ===== Responsive ===== */
     @media (min-width: 480px) {
-      body { padding: 40px 20px 80px; }
+       { padding: 40px 20px 80px; }
       .calendar, .today-card { max-width: 440px; margin: 0 auto 32px; }
     }
   </style>
 </head>
-<body>
+<>
 
   <!-- Theme Toggle -->
   <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+  <!-- 回到今天按钮 -->
+  <button class="today-jump-btn" id="todayJumpBtn" title="回到今天">📅</button>
 
   <!-- Header -->
   <div class="header">
@@ -731,6 +759,13 @@
         grid.appendChild(cell);
       }
     }
+    document.getElementById('todayJumpBtn').addEventListener('click', function() {
+      const today = new Date();
+      viewYear = today.getFullYear();
+      viewMonth = today.getMonth();
+      closeDetail();
+      render();
+    });
 
     function mk(tag, opts) {
       const el = document.createElement(tag);
