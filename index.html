@@ -9,6 +9,7 @@
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
 
     :root {
+      /* Dark Theme (Default) */
       --bg: #0d1117;
       --bg-card: #161b22;
       --bg-cell: #21262d;
@@ -22,6 +23,28 @@
       --rest-color: #3fb950;
       --today-bg: rgba(240, 136, 62, 0.08);
       --today-border: #f0883e;
+      --avatar-bg: linear-gradient(135deg, #f0883e, #a371f7);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    [data-theme="light"] {
+      --bg: #f6f8fa;
+      --bg-card: #ffffff;
+      --bg-cell: #f3f4f6;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --text-muted: #656d76;
+      --accent: #d55f0a;
+      --accent-glow: rgba(213, 95, 10, 0.12);
+      --day-color: #0969da;
+      --night-color: #8250df;
+      --rest-color: #1a7f37;
+      --today-bg: rgba(213, 95, 10, 0.08);
+      --today-border: #d55f0a;
+      --avatar-bg: linear-gradient(135deg, #d55f0a, #8250df);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,9 +55,48 @@
       color: var(--text);
       min-height: 100vh;
       padding: 24px 16px 80px;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
       background-image:
-        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(240, 136, 62, 0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 50% at 50% -10%, var(--accent-glow) 0%, transparent 60%),
         radial-gradient(ellipse 60% 40% at 80% 60%, rgba(88, 166, 255, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* ===== Theme Toggle ===== */
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      transition: all 0.2s ease;
+      z-index: 100;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+      border-color: var(--accent);
+    }
+
+    .theme-toggle:active {
+      transform: scale(0.95);
     }
 
     /* ===== Header ===== */
@@ -52,13 +114,34 @@
       border-radius: 100px;
       padding: 6px 16px 6px 8px;
       margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
     }
 
     .avatar {
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #f0883e, #a371f7);
+      background: var(--avatar-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar-fallback {
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -83,7 +166,7 @@
       font-weight: 900;
       letter-spacing: -0.5px;
       margin-bottom: 6px;
-      background: linear-gradient(135deg, #e6edf3 30%, var(--accent) 100%);
+      background: linear-gradient(135deg, var(--text) 30%, var(--accent) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -134,6 +217,8 @@
       position: relative;
       overflow: hidden;
       animation: slideUp 0.6s ease-out;
+      box-shadow: var(--shadow-md);
+      transition: all 0.3s ease;
     }
 
     .today-card::before {
@@ -212,6 +297,7 @@
       font-size: 18px;
       transition: all 0.2s;
       flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
     }
 
     .nav-btn:hover {
@@ -248,6 +334,8 @@
       border: 1px solid var(--border);
       border-radius: 20px;
       overflow: hidden;
+      box-shadow: var(--shadow-md);
+      transition: all 0.3s ease;
     }
 
     .weekdays {
@@ -307,7 +395,7 @@
     }
 
     .day-cell:not(.past):not(.today):not(.empty):hover {
-      background: #2d333b;
+      background: var(--border);
       transform: scale(1.08);
     }
 
@@ -337,7 +425,7 @@
       color: var(--accent);
     }
 
-    /* ===== Detail Panel (tap to show) ===== */
+    /* ===== Detail Panel ===== */
     .detail-panel {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -346,6 +434,7 @@
       margin-top: 20px;
       display: none;
       animation: slideUp 0.3s ease-out;
+      box-shadow: var(--shadow-md);
     }
 
     .detail-panel.show { display: block; }
@@ -377,7 +466,7 @@
       transition: all 0.2s;
     }
 
-    .detail-close:hover { background: #2d333b; color: var(--text); }
+    .detail-close:hover { background: var(--border); color: var(--text); }
 
     .detail-shift {
       font-size: 36px;
@@ -424,22 +513,29 @@
       border-radius: 12px;
       padding: 12px 16px;
       display: inline-block;
+      box-shadow: var(--shadow-sm);
     }
 
     /* ===== Responsive ===== */
     @media (min-width: 480px) {
       body { padding: 40px 20px 80px; }
-      .calendar { max-width: 440px; margin: 0 auto; }
-      .today-card { max-width: 440px; margin: 0 auto 32px; }
+      .calendar, .today-card { max-width: 440px; margin: 0 auto 32px; }
     }
   </style>
 </head>
 <body>
 
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+
   <!-- Header -->
   <div class="header">
     <div class="avatar-badge">
-      <div class="avatar">清</div>
+      <div class="avatar">
+        <!-- 头像图片加载失败时显示文字 -->
+        <img src="avatar.jpg" alt="清蒸" onerror="this.style.display='none'">
+        <div class="avatar-fallback">清</div>
+      </div>
       <span class="badge-text"><strong>清蒸</strong> 的排班表</span>
     </div>
     <h1>清蒸排班</h1>
@@ -503,7 +599,23 @@
   <script>
     // ===== Config =====
     const CYCLE = ['白班', '夜班', '休息', '白班', '夜班', '休息', '休息', '休息'];
-    const ANCHOR_DATE = new Date('2026-04-18'); // 已知锚点：2026-04-18 是白班（周期第0天）
+    const ANCHOR_DATE = new Date('2026-04-18');
+
+    // ===== Theme =====
+    const themeToggle = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('qingzheng-theme');
+    if (savedTheme) {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      themeToggle.textContent = savedTheme === 'light' ? '☀️' : '🌙';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('qingzheng-theme', next);
+      themeToggle.textContent = next === 'light' ? '☀️' : '🌙';
+    });
 
     // ===== State =====
     let viewYear, viewMonth;
@@ -519,7 +631,7 @@
 
     function getCycleIndex(date) {
       const diff = Math.round((date - ANCHOR_DATE) / (1000 * 60 * 60 * 24));
-      return ((diff % 8) + 8) % 8; // ensure non-negative
+      return ((diff % 8) + 8) % 8;
     }
 
     function getShift(date) {
@@ -569,7 +681,7 @@
       // Month title
       document.getElementById('monthTitle').textContent = `${viewYear}年${viewMonth+1}月`;
 
-      // Nav buttons: only allow navigation within current year ±1
+      // Nav buttons
       const minYear = today.getFullYear() - 1;
       const maxYear = today.getFullYear() + 1;
       document.getElementById('prevBtn').disabled = (viewYear === minYear && viewMonth === 0);
@@ -580,8 +692,7 @@
       grid.innerHTML = '';
 
       const firstDay = new Date(viewYear, viewMonth, 1);
-      // Monday-first: getDay()=0(Sun)->6, 1(Mon)->0, ...
-      const startDow = (firstDay.getDay() + 6) % 7; // Mon=0, Sun=6
+      const startDow = (firstDay.getDay() + 6) % 7;
       const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
       // Empty cells before
