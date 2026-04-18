@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>清蒸排班表</title>
+  <title>清蒸排班表 - 修复版</title>
   <style>
     /* ===== Google Fonts ===== */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -26,6 +26,11 @@
       --avatar-bg: linear-gradient(135deg, #f0883e, #a371f7);
       --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
       --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+      
+      /* Shift-based background colors */
+      --shift-bg-day: #0f172a;
+      --shift-bg-night: #1e1b4b;
+      --shift-bg-rest: #1a2e1a;
     }
 
     [data-theme="light"] {
@@ -45,7 +50,16 @@
       --avatar-bg: linear-gradient(135deg, #d55f0a, #8250df);
       --shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
       --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+      
+      /* Light theme shift backgrounds */
+      --shift-bg-day: #e0f2fe;
+      --shift-bg-night: #ede9fe;
+      --shift-bg-rest: #dcfce7;
     }
+
+    [data-shift="day"] { background: linear-gradient(135deg, var(--shift-bg-day), var(--bg)); }
+    [data-shift="night"] { background: linear-gradient(135deg, var(--shift-bg-night), var(--bg)); }
+    [data-shift="rest"] { background: linear-gradient(135deg, var(--shift-bg-rest), var(--bg)); }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -54,7 +68,7 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 24px 16px 80px;
+      padding: 24px 16px 120px;
       transition: background 0.3s ease, color 0.3s ease;
     }
 
@@ -96,6 +110,36 @@
     }
 
     .theme-toggle:active {
+      transform: scale(0.95);
+    }
+
+    /* ===== Back to Today Button ===== */
+    .back-to-today {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      transition: all 0.2s ease;
+      z-index: 100;
+    }
+
+    .back-to-today:hover {
+      transform: scale(1.1);
+      background: var(--accent);
+    }
+
+    .back-to-today:active {
       transform: scale(0.95);
     }
 
@@ -143,21 +187,21 @@
     }
 
     .avatar-fallback {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    color: white;
-    background: var(--avatar-bg);    
-    z-index: 1;                      
-    border-radius: 50%;
-  }
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      background: var(--avatar-bg);    
+      z-index: 1;                      
+      border-radius: 50%;
+    }
     .badge-text {
       font-size: 13px;
       color: var(--text-muted);
@@ -274,6 +318,7 @@
     .today-cycle {
       font-size: 12px;
       color: var(--text-muted);
+      margin-bottom: 12px;
     }
 
     .today-cycle span {
@@ -281,6 +326,46 @@
       font-weight: 600;
       font-family: 'JetBrains Mono', monospace;
     }
+
+    /* ===== Cycle Progress Bar ===== */
+    .cycle-progress {
+      width: 100%;
+      height: 8px;
+      background: var(--bg-cell);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--day-color), var(--night-color));
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* ===== Next Shift Info ===== */
+    .next-shift-info {
+      background: var(--bg-cell);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .next-shift-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .next-shift-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .next-shift-day { color: var(--day-color); }
+    .next-shift-night { color: var(--night-color); }
+    .next-shift-rest { color: var(--rest-color); }
 
     /* ===== Month Nav ===== */
     .month-nav {
@@ -433,6 +518,17 @@
       color: var(--accent);
     }
 
+    /* ===== Festival Marker ===== */
+    .festival-marker {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 8px;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
     /* ===== Detail Panel ===== */
     .detail-panel {
       background: var(--bg-card);
@@ -495,6 +591,126 @@
 
     .detail-cycle span { color: var(--accent); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
+    /* ===== Settings Modal ===== */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.show { display: flex; }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: var(--bg-cell);
+      border: none;
+      border-radius: 8px;
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover { background: var(--border); color: var(--text); }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-cell);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-cell);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--bg-cell);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
     /* ===== Animations ===== */
     @keyframes slideUp {
       from { opacity: 0; transform: translateY(20px); }
@@ -522,11 +738,28 @@
       padding: 12px 16px;
       display: inline-block;
       box-shadow: var(--shadow-sm);
+      margin-bottom: 12px;
+    }
+
+    .settings-btn {
+      background: var(--bg-cell);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 16px;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .settings-btn:hover {
+      background: var(--border);
+      color: var(--text);
     }
 
     /* ===== Responsive ===== */
     @media (min-width: 480px) {
-      body { padding: 40px 20px 80px; }
+      body { padding: 40px 20px 120px; }
       .calendar, .today-card { max-width: 440px; margin: 0 auto 32px; }
     }
   </style>
@@ -535,6 +768,9 @@
 
   <!-- Theme Toggle -->
   <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+
+  <!-- Back to Today Button -->
+  <button class="back-to-today" id="backToToday" title="回到今天">📅</button>
 
   <!-- Header -->
   <div class="header">
@@ -563,6 +799,23 @@
     <div class="today-date" id="todayDate"></div>
     <div class="today-shift" id="todayShift"></div>
     <div class="today-cycle">本周期第 <span id="todayCycle"></span> 天</div>
+    
+    <!-- Cycle Progress Bar -->
+    <div class="cycle-progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    
+    <!-- Next Shift Info -->
+    <div class="next-shift-info">
+      <div class="next-shift-item">
+        <span>距离下次白班:</span>
+        <span id="nextDayInfo" class="next-shift-day">-</span>
+      </div>
+      <div class="next-shift-item">
+        <span>距离下次夜班:</span>
+        <span id="nextNightInfo" class="next-shift-night">-</span>
+      </div>
+    </div>
   </div>
 
   <!-- Month Nav -->
@@ -596,18 +849,49 @@
     <div class="detail-cycle">本周期第 <span id="detailCycle"></span> 天</div>
   </div>
 
+  <!-- Settings Modal -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">排班设置</div>
+        <button class="modal-close" onclick="closeSettings()">✕</button>
+      </div>
+      <div class="form-group">
+        <label for="anchorDate">锚定日期</label>
+        <input type="date" id="anchorDate" value="2026-04-18">
+      </div>
+      <div class="form-group">
+        <label for="cyclePattern">周期模式 (用空格分隔)</label>
+        <textarea id="cyclePattern">白班 夜班 休息 白班 夜班 休息 休息 休息</textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="closeSettings()">取消</button>
+        <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <div class="footer">
     <div class="footer-hint">
       💡 点击任意日期可查看详情<br>
       周期：白 夜 休 白 夜 休 休 休
     </div>
+    <div class="settings-btn" onclick="openSettings()">⚙️ 排班设置</div>
   </div>
 
   <script>
     // ===== Config =====
-    const CYCLE = ['白班', '夜班', '休息', '白班', '夜班', '休息', '休息', '休息'];
-    const ANCHOR_DATE = new Date('2026-04-18');
+    let CYCLE = JSON.parse(localStorage.getItem('qingzheng-cycle')) || ['白班', '夜班', '休息', '白班', '夜班', '休息', '休息', '休息'];
+    let ANCHOR_DATE = new Date(localStorage.getItem('qingzheng-anchor') || '2026-04-18');
+
+    // Festival data
+    const FESTIVALS = {
+      '2026-01-01': '元旦',
+      '2026-02-17': '春节',
+      '2026-05-01': '劳动节',
+      '2026-10-01': '国庆节'
+    };
 
     // ===== Theme =====
     const themeToggle = document.getElementById('themeToggle');
@@ -639,7 +923,7 @@
 
     function getCycleIndex(date) {
       const diff = Math.round((date - ANCHOR_DATE) / (1000 * 60 * 60 * 24));
-      return ((diff % 8) + 8) % 8;
+      return ((diff % CYCLE.length) + CYCLE.length) % CYCLE.length;
     }
 
     function getShift(date) {
@@ -652,6 +936,13 @@
 
     function formatDate(date) {
       return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日`;
+    }
+
+    function formatDateISO(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
 
     function isSameDay(a, b) {
@@ -668,9 +959,44 @@
       return date < today;
     }
 
+    // Calculate next shifts
+    function calculateNextShifts() {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      let nextDayDays = -1;
+      let nextNightDays = -1;
+      
+      for (let i = 1; i <= 30; i++) {
+        const futureDate = new Date(today);
+        futureDate.setDate(futureDate.getDate() + i);
+        
+        if (nextDayDays === -1 && getShift(futureDate) === '白班') {
+          nextDayDays = i;
+        }
+        
+        if (nextNightDays === -1 && getShift(futureDate) === '夜班') {
+          nextNightDays = i;
+        }
+        
+        if (nextDayDays !== -1 && nextNightDays !== -1) break;
+      }
+      
+      return { nextDay: nextDayDays, nextNight: nextNightDays };
+    }
+
+    // Update background based on today's shift
+    function updateBackgroundShift() {
+      const today = new Date();
+      const shift = getShift(today);
+      const shiftClass = shift === '白班' ? 'day' : shift === '夜班' ? 'night' : 'rest';
+      document.body.setAttribute('data-shift', shiftClass);
+    }
+
     // ===== Render =====
     function render() {
       const today = new Date();
+      updateBackgroundShift();
 
       // Subtitle
       document.getElementById('subtitle').textContent =
@@ -685,6 +1011,15 @@
       td.innerHTML = `<span class="today-shift-emoji">${emoji}</span>${shift}`;
       td.className = `today-shift ${cls}`;
       document.getElementById('todayCycle').textContent = getCycleIndex(today) + 1;
+      
+      // Progress bar
+      const progress = (getCycleIndex(today) + 1) / CYCLE.length * 100;
+      document.getElementById('progressBar').style.width = `${progress}%`;
+
+      // Next shift info
+      const nextShifts = calculateNextShifts();
+      document.getElementById('nextDayInfo').textContent = nextShifts.nextDay === -1 ? 'N/A' : `${nextShifts.nextDay}天`;
+      document.getElementById('nextNightInfo').textContent = nextShifts.nextNight === -1 ? 'N/A' : `${nextShifts.nextNight}天`;
 
       // Month title
       document.getElementById('monthTitle').textContent = `${viewYear}年${viewMonth+1}月`;
@@ -721,6 +1056,13 @@
           cls: `day-cell${todayCls}${pastCls}`,
           onclick: () => showDetail(date)
         });
+
+        // Add festival marker if exists
+        const dateStr = formatDateISO(date);
+        if (FESTIVALS[dateStr]) {
+          const festivalMarker = mk('div', { cls: 'festival-marker', text: FESTIVALS[dateStr].substring(0, 2) });
+          cell.appendChild(festivalMarker);
+        }
 
         const dot = mk('div', { cls: `shift-dot ${cls}` });
         const num = mk('div', { cls: 'day-num', text: d });
@@ -775,6 +1117,45 @@
       if (viewMonth === 11) { viewYear++; viewMonth = 0; }
       else viewMonth++;
       closeDetail();
+      render();
+    }
+
+    // ===== Back to Today =====
+    document.getElementById('backToToday').addEventListener('click', () => {
+      const today = new Date();
+      viewYear = today.getFullYear();
+      viewMonth = today.getMonth();
+      closeDetail();
+      render();
+    });
+
+    // ===== Settings =====
+    function openSettings() {
+      document.getElementById('settingsModal').classList.add('show');
+      document.getElementById('anchorDate').value = formatDateISO(ANCHOR_DATE);
+      document.getElementById('cyclePattern').value = CYCLE.join(' ');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('show');
+    }
+
+    function saveSettings() {
+      const newAnchor = new Date(document.getElementById('anchorDate').value);
+      const newCycle = document.getElementById('cyclePattern').value.split(/\s+/).filter(s => s.trim() !== '');
+      
+      if (newCycle.length === 0) {
+        alert('周期模式不能为空！');
+        return;
+      }
+      
+      ANCHOR_DATE = newAnchor;
+      CYCLE = newCycle;
+      
+      localStorage.setItem('qingzheng-anchor', ANCHOR_DATE.toISOString().split('T')[0]);
+      localStorage.setItem('qingzheng-cycle', JSON.stringify(CYCLE));
+      
+      closeSettings();
       render();
     }
   </script>
