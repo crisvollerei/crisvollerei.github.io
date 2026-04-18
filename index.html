@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>清蒸排班表 </title>
+  <title>清蒸排班表</title>
   <style>
     /* ===== Google Fonts ===== */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -366,6 +366,42 @@
     .next-shift-day { color: var(--day-color); }
     .next-shift-night { color: var(--night-color); }
     .next-shift-rest { color: var(--rest-color); }
+
+    /* ===== 实时时钟与倒计时 ===== */
+    .live-clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 12px 0 8px;
+      letter-spacing: 2px;
+    }
+
+    .countdown-container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 8px;
+      padding: 8px 0;
+      border-top: 1px dashed var(--border);
+    }
+
+    .countdown-item {
+      text-align: center;
+    }
+
+    .countdown-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .countdown-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
 
     /* ===== Month Nav ===== */
     .month-nav {
@@ -776,7 +812,6 @@
   <div class="header">
     <div class="avatar-badge">
       <div class="avatar">
-        <!-- 头像图片加载失败时显示文字 -->
         <img src="avatar.png" alt="清蒸" onerror="this.style.display='none'">
         <div class="avatar-fallback">清</div>
       </div>
@@ -814,6 +849,21 @@
       <div class="next-shift-item">
         <span>距离下次夜班:</span>
         <span id="nextNightInfo" class="next-shift-night">-</span>
+      </div>
+    </div>
+
+    <!-- 实时时钟 -->
+    <div class="live-clock" id="liveClock">--:--:--</div>
+
+    <!-- 上下班倒计时 -->
+    <div class="countdown-container">
+      <div class="countdown-item">
+        <span class="countdown-label">距离上班</span>
+        <span class="countdown-value" id="countdownToWork">--:--:--</span>
+      </div>
+      <div class="countdown-item">
+        <span class="countdown-label">距离下班</span>
+        <span class="countdown-value" id="countdownToOff">--:--:--</span>
       </div>
     </div>
   </div>
@@ -919,6 +969,9 @@
       viewYear = today.getFullYear();
       viewMonth = today.getMonth();
       render();
+      // 启动实时时钟更新
+      updateLiveClockAndCountdown();
+      setInterval(updateLiveClockAndCountdown, 1000);
     })();
 
     function getCycleIndex(date) {
@@ -928,6 +981,107 @@
 
     function getShift(date) {
       return CYCLE[getCycleIndex(date)];
+    }
+
+    // ===== 班次时间计算 (白班 8:00-20:00 / 夜班 20:00-次日8:00) =====
+    function getShiftTimes(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+      
+      // 白班：当日 8:00 - 20:00
+      const dayStart = new Date(year, month, day, 8, 0, 0);
+      const dayEnd = new Date(year, month, day, 20, 0, 0);
+      
+      // 夜班：当日 20:00 - 次日 8:00
+      const nightStart = new Date(year, month, day, 20, 0, 0);
+      const nightEnd = new Date(year, month, day + 1, 8, 0, 0);
+      
+      const shift = getShift(date);
+      
+      if (shift === '白班') {
+        return { start: dayStart, end: dayEnd };
+      } else if (shift === '夜班') {
+        return { start: nightStart, end: nightEnd };
+      } else {
+        return null; // 休息
+      }
+    }
+
+    // 格式化倒计时 (毫秒 → HH:MM:SS)
+    function formatCountdown(ms) {
+      if (ms <= 0) return '00:00:00';
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    // 计算距离下一个班次上班的时间（用于休息日）
+    function getNextWorkCountdown(now) {
+      for (let i = 0; i < 14; i++) {
+        const checkDate = new Date(now);
+        checkDate.setDate(checkDate.getDate() + i);
+        const shift = getShift(checkDate);
+        if (shift !== '休息') {
+          const times = getShiftTimes(checkDate);
+          if (times && times.start > now) {
+            return times.start - now;
+          }
+        }
+      }
+      return null;
+    }
+
+    // 更新实时时钟和倒计时
+    function updateLiveClockAndCountdown() {
+      const now = new Date();
+      
+      // 1. 实时时钟
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      document.getElementById('liveClock').textContent = timeStr;
+      
+      // 2. 今日班次倒计时
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const shift = getShift(today);
+      const times = getShiftTimes(today);
+      
+      const workEl = document.getElementById('countdownToWork');
+      const offEl = document.getElementById('countdownToOff');
+      
+      if (shift === '休息') {
+        const nextWorkMs = getNextWorkCountdown(now);
+        if (nextWorkMs !== null) {
+          workEl.textContent = formatCountdown(nextWorkMs);
+        } else {
+          workEl.textContent = '--:--:--';
+        }
+        offEl.textContent = '今日休息';
+        offEl.style.fontSize = '13px';
+        offEl.style.fontWeight = '400';
+      } else {
+        const start = times.start;
+        const end = times.end;
+        
+        // 距离上班
+        if (now < start) {
+          workEl.textContent = formatCountdown(start - now);
+        } else {
+          workEl.textContent = '已上班';
+        }
+        
+        // 距离下班
+        if (now < end) {
+          offEl.textContent = formatCountdown(end - now);
+        } else {
+          offEl.textContent = '已下班';
+        }
+        
+        offEl.style.fontSize = '';
+        offEl.style.fontWeight = '';
+      }
     }
 
     function getWeekdayCn(date) {
@@ -1071,6 +1225,9 @@
         cell.appendChild(num);
         grid.appendChild(cell);
       }
+
+      // 每次渲染后刷新一次倒计时（保证切换月份后依然准确）
+      updateLiveClockAndCountdown();
     }
 
     function mk(tag, opts) {
@@ -1159,6 +1316,5 @@
       render();
     }
   </script>
-
 </body>
 </html>
