@@ -47,6 +47,9 @@
       --day-color: #58a6ff;
       --night-color: #a371f7;
       --rest-color: #3fb950;
+      --noon-color: #d29922;
+      --morning-color: #39d2c0;
+      --evening-color: #f778ba;
       --today-bg: rgba(240, 136, 62, 0.08);
       --today-border: #f0883e;
       --avatar-bg: linear-gradient(135deg, #f0883e, #a371f7);
@@ -60,6 +63,9 @@
       --shift-bg-day: #0f172a;
       --shift-bg-night: #1e1b4b;
       --shift-bg-rest: #1a2e1a;
+      --shift-bg-noon: #2d2410;
+      --shift-bg-morning: #0f2d2a;
+      --shift-bg-evening: #2d1525;
 
       /* Shift cell tints (dark) */
       --cell-day-bg: rgba(88, 166, 255, 0.1);
@@ -68,6 +74,12 @@
       --cell-night-border: rgba(163, 113, 247, 0.2);
       --cell-rest-bg: rgba(63, 185, 80, 0.08);
       --cell-rest-border: rgba(63, 185, 80, 0.15);
+      --cell-noon-bg: rgba(210, 153, 34, 0.1);
+      --cell-noon-border: rgba(210, 153, 34, 0.2);
+      --cell-morning-bg: rgba(57, 210, 192, 0.1);
+      --cell-morning-border: rgba(57, 210, 192, 0.2);
+      --cell-evening-bg: rgba(247, 119, 186, 0.1);
+      --cell-evening-border: rgba(247, 119, 186, 0.2);
 
       /* Current week highlight */
       --current-week-bg: rgba(240, 136, 62, 0.04);
@@ -88,6 +100,9 @@
       --day-color: #0969da;
       --night-color: #8250df;
       --rest-color: #1a7f37;
+      --noon-color: #9a6700;
+      --morning-color: #0d9488;
+      --evening-color: #c44569;
       --today-bg: rgba(213, 95, 10, 0.08);
       --today-border: #d55f0a;
       --avatar-bg: linear-gradient(135deg, #d55f0a, #8250df);
@@ -101,6 +116,9 @@
       --shift-bg-day: #e0f2fe;
       --shift-bg-night: #ede9fe;
       --shift-bg-rest: #dcfce7;
+      --shift-bg-noon: #fef3c7;
+      --shift-bg-morning: #ccfbf1;
+      --shift-bg-evening: #fce7f3;
 
       /* Shift cell tints (light) */
       --cell-day-bg: rgba(9, 105, 218, 0.08);
@@ -109,6 +127,12 @@
       --cell-night-border: rgba(130, 80, 223, 0.15);
       --cell-rest-bg: rgba(26, 127, 55, 0.07);
       --cell-rest-border: rgba(26, 127, 55, 0.12);
+      --cell-noon-bg: rgba(154, 103, 0, 0.08);
+      --cell-noon-border: rgba(154, 103, 0, 0.15);
+      --cell-morning-bg: rgba(13, 148, 136, 0.08);
+      --cell-morning-border: rgba(13, 148, 136, 0.15);
+      --cell-evening-bg: rgba(196, 69, 105, 0.08);
+      --cell-evening-border: rgba(196, 69, 105, 0.15);
 
       --current-week-bg: rgba(213, 95, 10, 0.04);
 
@@ -118,6 +142,9 @@
     [data-shift="day"] { background: linear-gradient(135deg, var(--shift-bg-day), var(--bg)); }
     [data-shift="night"] { background: linear-gradient(135deg, var(--shift-bg-night), var(--bg)); }
     [data-shift="rest"] { background: linear-gradient(135deg, var(--shift-bg-rest), var(--bg)); }
+    [data-shift="noon"] { background: linear-gradient(135deg, var(--shift-bg-noon), var(--bg)); }
+    [data-shift="morning"] { background: linear-gradient(135deg, var(--shift-bg-morning), var(--bg)); }
+    [data-shift="evening"] { background: linear-gradient(135deg, var(--shift-bg-evening), var(--bg)); }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -330,7 +357,7 @@
     .legend {
       display: flex;
       justify-content: center;
-      gap: 20px;
+      gap: 12px;
       margin-bottom: 28px;
       flex-wrap: wrap;
       animation: fadeIn 0.8s ease-out;
@@ -367,6 +394,9 @@
     .legend-dot.day { background: var(--day-color); color: var(--day-color); }
     .legend-dot.night { background: var(--night-color); color: var(--night-color); }
     .legend-dot.rest { background: var(--rest-color); color: var(--rest-color); }
+    .legend-dot.noon { background: var(--noon-color); color: var(--noon-color); }
+    .legend-dot.morning { background: var(--morning-color); color: var(--morning-color); }
+    .legend-dot.evening { background: var(--evening-color); color: var(--evening-color); }
 
     /* ===== Content Layout ===== */
     .content-layout {
@@ -401,7 +431,7 @@
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 3px;
-      background: linear-gradient(90deg, var(--day-color), var(--night-color), var(--rest-color));
+      background: linear-gradient(90deg, var(--day-color), var(--noon-color), var(--night-color), var(--rest-color));
       border-radius: 24px 24px 0 0;
     }
 
@@ -447,18 +477,12 @@
       transition: all 0.3s ease;
     }
 
-    .today-shift.day {
-      color: var(--day-color);
-      text-shadow: 0 0 20px rgba(88, 166, 255, 0.3);
-    }
-    .today-shift.night {
-      color: var(--night-color);
-      text-shadow: 0 0 20px rgba(163, 113, 247, 0.3);
-    }
-    .today-shift.rest {
-      color: var(--rest-color);
-      text-shadow: 0 0 20px rgba(63, 185, 80, 0.3);
-    }
+    .today-shift.day { color: var(--day-color); text-shadow: 0 0 20px rgba(88, 166, 255, 0.3); }
+    .today-shift.night { color: var(--night-color); text-shadow: 0 0 20px rgba(163, 113, 247, 0.3); }
+    .today-shift.rest { color: var(--rest-color); text-shadow: 0 0 20px rgba(63, 185, 80, 0.3); }
+    .today-shift.noon { color: var(--noon-color); text-shadow: 0 0 20px rgba(210, 153, 34, 0.3); }
+    .today-shift.morning { color: var(--morning-color); text-shadow: 0 0 20px rgba(57, 210, 192, 0.3); }
+    .today-shift.evening { color: var(--evening-color); text-shadow: 0 0 20px rgba(247, 119, 186, 0.3); }
 
     .today-shift-emoji {
       font-size: 36px;
@@ -495,7 +519,7 @@
 
     .progress-bar {
       height: 100%;
-      background: linear-gradient(90deg, var(--day-color), var(--night-color), var(--rest-color));
+      background: linear-gradient(90deg, var(--day-color), var(--noon-color), var(--night-color), var(--rest-color));
       border-radius: 3px;
       transition: width 0.5s ease;
       position: relative;
@@ -536,8 +560,11 @@
     .next-shift-day { color: var(--day-color); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
     .next-shift-night { color: var(--night-color); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
     .next-shift-rest { color: var(--rest-color); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .next-shift-noon { color: var(--noon-color); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .next-shift-morning { color: var(--morning-color); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .next-shift-evening { color: var(--evening-color); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
-    /* ===== Rest countdown (days to next rest) ===== */
+    /* ===== Rest countdown ===== */
     .rest-countdown {
       background: var(--bg-cell);
       border-radius: 12px;
@@ -556,7 +583,7 @@
       color: var(--rest-color);
     }
 
-    /* ===== 实时时钟与倒计时 ===== */
+    /* ===== Live Clock & Countdown ===== */
     .live-clock {
       font-family: 'JetBrains Mono', monospace;
       font-size: 18px;
@@ -635,6 +662,9 @@
     .stat-card.day { --stat-color: var(--day-color); }
     .stat-card.night { --stat-color: var(--night-color); }
     .stat-card.rest { --stat-color: var(--rest-color); }
+    .stat-card.noon { --stat-color: var(--noon-color); }
+    .stat-card.morning { --stat-color: var(--morning-color); }
+    .stat-card.evening { --stat-color: var(--evening-color); }
 
     .stat-icon {
       font-size: 24px;
@@ -700,6 +730,8 @@
       gap: 4px;
       font-size: 11px;
       color: var(--text-muted);
+      max-height: 80px;
+      overflow-y: auto;
     }
     .ring-legend-item {
       display: flex;
@@ -747,7 +779,7 @@
       margin-left: 2px;
     }
 
-    /* ===== Year Heatmap (Mini Calendars) ===== */
+    /* ===== Year Heatmap ===== */
     .heatmap-container {
       background: var(--glass-bg);
       backdrop-filter: blur(12px);
@@ -824,21 +856,13 @@
       transform: scale(1.6);
       z-index: 2;
     }
-    .mini-cal-day.shift-day {
-      background: var(--day-color);
-      opacity: 0.7;
-    }
-    .mini-cal-day.shift-night {
-      background: var(--night-color);
-      opacity: 0.7;
-    }
-    .mini-cal-day.shift-rest {
-      background: var(--rest-color);
-      opacity: 0.35;
-    }
-    .mini-cal-day.empty {
-      background: transparent;
-    }
+    .mini-cal-day.shift-day { background: var(--day-color); opacity: 0.7; }
+    .mini-cal-day.shift-night { background: var(--night-color); opacity: 0.7; }
+    .mini-cal-day.shift-rest { background: var(--rest-color); opacity: 0.35; }
+    .mini-cal-day.shift-noon { background: var(--noon-color); opacity: 0.7; }
+    .mini-cal-day.shift-morning { background: var(--morning-color); opacity: 0.7; }
+    .mini-cal-day.shift-evening { background: var(--evening-color); opacity: 0.7; }
+    .mini-cal-day.empty { background: transparent; }
     .mini-cal-day.today-marker {
       outline: 1.5px solid var(--accent);
       outline-offset: 0.5px;
@@ -887,9 +911,7 @@
       box-shadow: var(--shadow-md);
     }
 
-    .nav-btn:active {
-      transform: scale(0.95);
-    }
+    .nav-btn:active { transform: scale(0.95); }
 
     .nav-btn:disabled {
       opacity: 0.3;
@@ -971,33 +993,19 @@
       min-height: 44px;
     }
 
-    .day-cell.empty {
-      background: transparent;
-      cursor: default;
-    }
+    .day-cell.empty { background: transparent; cursor: default; }
 
-    .day-cell.past {
-      color: var(--text-muted);
-      opacity: 0.5;
-    }
+    .day-cell.past { color: var(--text-muted); opacity: 0.5; }
 
-    .day-cell:not(.past):not(.today):not(.empty) {
-      cursor: pointer;
-    }
+    .day-cell:not(.past):not(.today):not(.empty) { cursor: pointer; }
 
     /* Shift-based cell backgrounds */
-    .day-cell.shift-day {
-      background: var(--cell-day-bg);
-      border: 1px solid var(--cell-day-border);
-    }
-    .day-cell.shift-night {
-      background: var(--cell-night-bg);
-      border: 1px solid var(--cell-night-border);
-    }
-    .day-cell.shift-rest {
-      background: var(--cell-rest-bg);
-      border: 1px solid var(--cell-rest-border);
-    }
+    .day-cell.shift-day { background: var(--cell-day-bg); border: 1px solid var(--cell-day-border); }
+    .day-cell.shift-night { background: var(--cell-night-bg); border: 1px solid var(--cell-night-border); }
+    .day-cell.shift-rest { background: var(--cell-rest-bg); border: 1px solid var(--cell-rest-border); }
+    .day-cell.shift-noon { background: var(--cell-noon-bg); border: 1px solid var(--cell-noon-border); }
+    .day-cell.shift-morning { background: var(--cell-morning-bg); border: 1px solid var(--cell-morning-border); }
+    .day-cell.shift-evening { background: var(--cell-evening-bg); border: 1px solid var(--cell-evening-border); }
 
     .day-cell:not(.past):not(.today):not(.empty):hover {
       transform: scale(1.08);
@@ -1007,6 +1015,9 @@
     .day-cell.shift-day:hover { border-color: var(--day-color); }
     .day-cell.shift-night:hover { border-color: var(--night-color); }
     .day-cell.shift-rest:hover { border-color: var(--rest-color); }
+    .day-cell.shift-noon:hover { border-color: var(--noon-color); }
+    .day-cell.shift-morning:hover { border-color: var(--morning-color); }
+    .day-cell.shift-evening:hover { border-color: var(--evening-color); }
 
     .day-cell.today {
       background: var(--today-bg) !important;
@@ -1015,7 +1026,6 @@
       animation: pulse-border 2s ease-in-out infinite;
     }
 
-    /* ===== Selected date marker ===== */
     :root {
       --selected-color: #22d3ee;
       --selected-glow: rgba(34, 211, 238, 0.2);
@@ -1033,16 +1043,13 @@
       font-weight: 700;
     }
 
-    /* Mini calendar selected marker */
     .mini-cal-day.selected-day {
       outline: 1.5px solid var(--selected-color);
       outline-offset: 0.5px;
       opacity: 1;
     }
 
-    .day-cell .day-num {
-      line-height: 1;
-    }
+    .day-cell .day-num { line-height: 1; }
 
     .day-cell .shift-dot {
       width: 6px;
@@ -1055,24 +1062,15 @@
     .shift-dot.day { background: var(--day-color); color: var(--day-color); }
     .shift-dot.night { background: var(--night-color); color: var(--night-color); }
     .shift-dot.rest { background: var(--rest-color); color: var(--rest-color); }
+    .shift-dot.noon { background: var(--noon-color); color: var(--noon-color); }
+    .shift-dot.morning { background: var(--morning-color); color: var(--morning-color); }
+    .shift-dot.evening { background: var(--evening-color); color: var(--evening-color); }
 
-    .day-cell.today .day-num {
-      color: var(--accent);
-    }
+    .day-cell.today .day-num { color: var(--accent); }
 
-    /* Current week highlight */
-    .day-cell.current-week {
-      box-shadow: inset 0 0 0 1px var(--current-week-bg);
-    }
-    .week-row {
-      background: var(--current-week-bg);
-      border-radius: 12px;
-    }
+    .day-cell.current-week { box-shadow: inset 0 0 0 1px var(--current-week-bg); }
 
-    /* ===== Stagger animation for calendar cells ===== */
-    .day-cell.animate-in {
-      animation: cellSlideUp 0.35s ease-out both;
-    }
+    .day-cell.animate-in { animation: cellSlideUp 0.35s ease-out both; }
 
     @keyframes cellSlideUp {
       from { opacity: 0; transform: translateY(16px); }
@@ -1144,15 +1142,7 @@
       border: 5px solid transparent;
       border-top-color: var(--tooltip-bg);
     }
-    .day-cell:hover .cell-tooltip {
-      display: block;
-    }
-
-    /* ===== Solar Term Icon ===== */
-    .solar-term-icon {
-      font-size: 10px;
-      margin-right: 1px;
-    }
+    .day-cell:hover .cell-tooltip { display: block; }
 
     /* ===== Detail Panel ===== */
     .detail-panel {
@@ -1181,9 +1171,7 @@
       font-weight: 600;
     }
 
-    .detail-panel {
-      margin-top: 20px;
-    }
+    .detail-panel { margin-top: 20px; }
 
     .detail-close {
       background: var(--bg-cell);
@@ -1212,6 +1200,9 @@
     .detail-shift.day { color: var(--day-color); }
     .detail-shift.night { color: var(--night-color); }
     .detail-shift.rest { color: var(--rest-color); }
+    .detail-shift.noon { color: var(--noon-color); }
+    .detail-shift.morning { color: var(--morning-color); }
+    .detail-shift.evening { color: var(--evening-color); }
 
     .detail-cycle {
       text-align: center;
@@ -1222,7 +1213,6 @@
 
     .detail-cycle span { color: var(--accent); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
-    /* Extra info grid in detail panel */
     .detail-extra {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1278,10 +1268,7 @@
       justify-content: space-between;
       margin-bottom: 16px;
     }
-    .picker-year-label {
-      font-size: 18px;
-      font-weight: 700;
-    }
+    .picker-year-label { font-size: 18px; font-weight: 700; }
     .picker-year-btn {
       background: var(--bg-cell);
       border: 1px solid var(--border);
@@ -1350,7 +1337,9 @@
       border-radius: 24px;
       padding: 24px;
       width: 90%;
-      max-width: 400px;
+      max-width: 460px;
+      max-height: 85vh;
+      overflow-y: auto;
       box-shadow: var(--shadow-lg);
       animation: modalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -1362,10 +1351,7 @@
       margin-bottom: 16px;
     }
 
-    .modal-title {
-      font-size: 18px;
-      font-weight: 600;
-    }
+    .modal-title { font-size: 18px; font-weight: 600; }
 
     .modal-close {
       background: var(--bg-cell);
@@ -1395,7 +1381,7 @@
       color: var(--text-muted);
     }
 
-    .form-group input {
+    .form-group input, .form-group select {
       width: 100%;
       padding: 10px 12px;
       background: var(--bg-cell);
@@ -1406,7 +1392,7 @@
       transition: all 0.2s;
     }
 
-    .form-group input:focus {
+    .form-group input:focus, .form-group select:focus {
       outline: none;
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-glow);
@@ -1421,7 +1407,7 @@
       color: var(--text);
       font-family: 'JetBrains Mono', monospace;
       resize: vertical;
-      min-height: 100px;
+      min-height: 80px;
       transition: all 0.2s;
     }
 
@@ -1429,6 +1415,73 @@
       outline: none;
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* Shift def row in settings */
+    .shift-def-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--bg-cell);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      border: 1px solid var(--border);
+    }
+
+    .shift-def-name {
+      font-weight: 600;
+      font-size: 14px;
+      min-width: 50px;
+      flex-shrink: 0;
+    }
+
+    .shift-def-time {
+      width: 72px;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .shift-def-time:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .shift-def-check {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .shift-def-check input {
+      width: auto;
+      cursor: pointer;
+    }
+
+    .shift-def-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .settings-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 20px 0 10px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
     }
 
     .btn-group {
@@ -1464,9 +1517,22 @@
       border: 1px solid var(--border);
     }
 
-    .btn-secondary:hover {
-      background: var(--border);
+    .btn-secondary:hover { background: var(--border); }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: none;
     }
+
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.danger:hover { border-color: #f87171; color: #f87171; }
 
     /* ===== Animations ===== */
     @keyframes slideUp {
@@ -1548,7 +1614,6 @@
       transform: translateY(-2px);
     }
 
-    /* ===== Keyboard shortcut hint ===== */
     .kbd-hint {
       font-size: 10px;
       color: var(--text-muted);
@@ -1566,7 +1631,7 @@
       margin: 0 2px;
     }
 
-    /* ===== Responsive - Tablet ===== */
+    /* ===== Responsive ===== */
     @media (min-width: 481px) and (max-width: 768px) {
       .today-card { max-width: 440px; margin: 0 auto 32px; }
       .stats-container { max-width: 440px; margin: 0 auto 32px; }
@@ -1575,61 +1640,36 @@
       .lunar-date { font-size: 10px; }
     }
 
-    /* ===== Responsive - Desktop (Wide Screen) ===== */
     @media (min-width: 769px) {
       body { padding: 40px 24px 120px; }
-
-      .main-container {
-        max-width: 1200px;
-      }
-
+      .main-container { max-width: 1200px; }
       .content-layout {
         flex-direction: row;
         align-items: flex-start;
         gap: 32px;
       }
-
       .left-column {
         flex: 0 0 380px;
         display: flex;
         flex-direction: column;
         gap: 24px;
       }
-
       .right-column {
         flex: 1;
         display: flex;
         flex-direction: column;
         gap: 16px;
       }
-
-      .today-card {
-        margin: 0;
-      }
-
-      .stats-container {
-        margin: 0;
-      }
-
-      .calendar {
-        max-width: none;
-      }
-
+      .today-card { margin: 0; }
+      .stats-container { margin: 0; }
+      .calendar { max-width: none; }
       .day-cell { min-height: 60px; }
       .lunar-date { font-size: 11px; }
-
-      .detail-panel {
-        position: sticky;
-        top: 20px;
-      }
+      .detail-panel { position: sticky; top: 20px; }
     }
 
-    /* ===== Responsive - Large Desktop ===== */
     @media (min-width: 1200px) {
-      .left-column {
-        flex: 0 0 420px;
-      }
-
+      .left-column { flex: 0 0 420px; }
       .day-cell { min-height: 70px; }
       .lunar-date { font-size: 12px; }
     }
@@ -1638,7 +1678,7 @@
 <body>
 
   <!-- Theme Toggle -->
-  <button class="theme-toggle" id="themeToggle" title="切换主题 (快捷键: 无)">
+  <button class="theme-toggle" id="themeToggle" title="切换主题">
     <i class="fas fa-moon" id="themeIcon"></i>
   </button>
 
@@ -1662,16 +1702,12 @@
       <div class="slogan" id="slogan"></div>
     </div>
 
-    <!-- Legend -->
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot day"></div>白班</div>
-      <div class="legend-item"><div class="legend-dot night"></div>夜班</div>
-      <div class="legend-item"><div class="legend-dot rest"></div>休息</div>
-    </div>
+    <!-- Legend (dynamically generated) -->
+    <div class="legend" id="legendContainer"></div>
 
     <!-- Content Layout -->
     <div class="content-layout">
-      <!-- Left Column (Today Info & Stats) -->
+      <!-- Left Column -->
       <div class="left-column">
         <!-- Today Card -->
         <div class="today-card">
@@ -1680,33 +1716,20 @@
           <div class="today-shift" id="todayShift"></div>
           <div class="today-cycle">本周期第 <span id="todayCycle"></span> 天</div>
 
-          <!-- Cycle Progress Bar -->
           <div class="cycle-progress">
             <div class="progress-bar" id="progressBar"></div>
           </div>
 
-          <!-- Next Shift Info -->
-          <div class="next-shift-info">
-            <div class="next-shift-item">
-              <span>距离下次白班:</span>
-              <span id="nextDayInfo" class="next-shift-day">-</span>
-            </div>
-            <div class="next-shift-item">
-              <span>距离下次夜班:</span>
-              <span id="nextNightInfo" class="next-shift-night">-</span>
-            </div>
-          </div>
+          <!-- Next Shift Info (dynamically generated) -->
+          <div class="next-shift-info" id="nextShiftContainer"></div>
 
-          <!-- 距离最近休息日 -->
           <div class="rest-countdown">
             <span>🎯 距最近休息日</span>
             <span class="rest-countdown-value" id="restCountdown">-</span>
           </div>
 
-          <!-- 实时时钟 -->
           <div class="live-clock" id="liveClock">--:--:--</div>
 
-          <!-- 上下班倒计时 -->
           <div class="countdown-container">
             <div class="countdown-item">
               <span class="countdown-label">距离上班</span>
@@ -1719,27 +1742,8 @@
           </div>
         </div>
 
-        <!-- Statistics Cards -->
-        <div class="stats-container">
-          <div class="stat-card day">
-            <div class="stat-icon"><i class="fas fa-sun"></i></div>
-            <div class="stat-value" id="dayCount">0</div>
-            <div class="stat-label">本月白班</div>
-            <div class="stat-trend" id="dayTrend"></div>
-          </div>
-          <div class="stat-card night">
-            <div class="stat-icon"><i class="fas fa-moon"></i></div>
-            <div class="stat-value" id="nightCount">0</div>
-            <div class="stat-label">本月夜班</div>
-            <div class="stat-trend" id="nightTrend"></div>
-          </div>
-          <div class="stat-card rest">
-            <div class="stat-icon"><i class="fas fa-couch"></i></div>
-            <div class="stat-value" id="restCount">0</div>
-            <div class="stat-label">本月休息</div>
-            <div class="stat-trend" id="restTrend"></div>
-          </div>
-        </div>
+        <!-- Statistics Cards (dynamically generated) -->
+        <div class="stats-container" id="statsContainer"></div>
 
         <!-- Ring Chart + Work Hours -->
         <div class="work-hours-card" id="workHoursCard">
@@ -1754,11 +1758,7 @@
             <div class="ring-chart" id="ringChart">
               <div class="ring-chart-inner" id="ringChartInner">0%</div>
             </div>
-            <div class="ring-legend">
-              <div class="ring-legend-item"><div class="ring-legend-dot" style="background:var(--day-color)"></div><span id="ringDay">白班 0天</span></div>
-              <div class="ring-legend-item"><div class="ring-legend-dot" style="background:var(--night-color)"></div><span id="ringNight">夜班 0天</span></div>
-              <div class="ring-legend-item"><div class="ring-legend-dot" style="background:var(--rest-color)"></div><span id="ringRest">休息 0天</span></div>
-            </div>
+            <div class="ring-legend" id="ringLegend"></div>
           </div>
         </div>
 
@@ -1776,9 +1776,8 @@
         </div>
       </div>
 
-      <!-- Right Column (Calendar) -->
+      <!-- Right Column -->
       <div class="right-column">
-        <!-- Month Nav -->
         <div class="month-nav">
           <button class="nav-btn" id="prevBtn" onclick="prevMonth()">
             <i class="fas fa-chevron-left"></i>
@@ -1789,27 +1788,20 @@
           </button>
         </div>
 
-        <!-- Calendar -->
         <div class="calendar">
           <div class="weekdays">
-            <div class="weekday">一</div>
-            <div class="weekday">二</div>
-            <div class="weekday">三</div>
-            <div class="weekday">四</div>
-            <div class="weekday">五</div>
-            <div class="weekday weekend">六</div>
-            <div class="weekday weekend">日</div>
+            <div class="weekday">一</div><div class="weekday">二</div><div class="weekday">三</div>
+            <div class="weekday">四</div><div class="weekday">五</div>
+            <div class="weekday weekend">六</div><div class="weekday weekend">日</div>
           </div>
           <div class="days-grid" id="daysGrid"></div>
         </div>
 
-        <!-- Year Heatmap -->
         <div class="heatmap-container">
           <div class="heatmap-title">📊 年度排班总览 · 点击月份跳转</div>
           <div class="heatmap-grid" id="heatmapGrid"></div>
         </div>
 
-        <!-- Keyboard hint -->
         <div class="kbd-hint">
           <kbd>←</kbd><kbd>→</kbd> 切换月份 · <kbd>T</kbd> 回到今天 · <kbd>Esc</kbd> 关闭面板
         </div>
@@ -1847,8 +1839,16 @@
       </div>
       <div class="form-group">
         <label for="cyclePattern">周期模式 (用空格分隔)</label>
-        <textarea id="cyclePattern">白班 夜班 休息 白班 夜班 休息 休息 休息</textarea>
+        <textarea id="cyclePattern" placeholder="例: 白班 夜班 休息 白班 夜班 休息 休息 休息"></textarea>
       </div>
+
+      <!-- Shift Definitions Section -->
+      <div class="settings-section-title">⚙ 班次时间定义</div>
+      <div id="shiftDefsEditor"></div>
+      <div style="margin-top:8px;">
+        <button class="btn-sm" onclick="addShiftDef()" title="添加新的班次类型">+ 添加班次</button>
+      </div>
+
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="closeSettings()">取消</button>
         <button class="btn btn-primary" onclick="saveSettings()">保存</button>
@@ -1858,9 +1858,8 @@
 
   <!-- Footer -->
   <div class="footer">
-    <div class="footer-hint">
-      💡 点击任意日期可查看详情<br>
-      周期：白 夜 休 白 夜 休 休 休
+    <div class="footer-hint" id="footerHint">
+      💡 点击任意日期可查看详情
     </div>
     <div class="settings-btn" onclick="openSettings()">
       <i class="fas fa-cog"></i> 排班设置
@@ -1868,9 +1867,111 @@
   </div>
 
   <script>
+    // ===================================================================
+    //  SHIFT DEFINITIONS — 班次定义配置中心
+    //  所有班次的名称、图标、颜色样式、起止时间均在此统一管理
+    // ===================================================================
+
+    // CSS 预设类: day(蓝), night(紫), rest(绿), noon(琥珀), morning(青), evening(粉)
+    const CSS_PRESETS = ['day', 'night', 'rest', 'noon', 'morning', 'evening'];
+    const PRESET_COLORS = {
+      'day':     { dark: '#58a6ff', light: '#0969da' },
+      'night':   { dark: '#a371f7', light: '#8250df' },
+      'rest':    { dark: '#3fb950', light: '#1a7f37' },
+      'noon':    { dark: '#d29922', light: '#9a6700' },
+      'morning': { dark: '#39d2c0', light: '#0d9488' },
+      'evening': { dark: '#f778ba', light: '#c44569' }
+    };
+    // 预设图标
+    const PRESET_ICONS = {
+      'day': '☀️', 'night': '🌙', 'rest': '🏖️',
+      'noon': '🌤️', 'morning': '🌅', 'evening': '🌆'
+    };
+
+    // 默认班次定义
+    const DEFAULT_SHIFT_DEFS = {
+      '白班': { emoji: '☀️',    cssClass: 'day',     startTime: '08:00', endTime: '20:00', isWork: true },
+      '中班': { emoji: '🌤️',    cssClass: 'noon',    startTime: '14:00', endTime: '22:00', isWork: true },
+      '夜班': { emoji: '🌙',    cssClass: 'night',   startTime: '20:00', endTime: '08:00', crossDay: true, isWork: true },
+      '休息': { emoji: '🏖️',    cssClass: 'rest',    startTime: null,    endTime: null,     isWork: false }
+    };
+
+    let SHIFT_DEFS = loadShiftDefs();
+
+    function loadShiftDefs() {
+      const saved = localStorage.getItem('qingzheng-shift-defs');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // 深度合并：保存的数据覆盖默认值，但保留默认中没有被删除的
+          const merged = JSON.parse(JSON.stringify(DEFAULT_SHIFT_DEFS));
+          for (const [k, v] of Object.entries(parsed)) {
+            merged[k] = v;
+          }
+          return merged;
+        } catch(e) { /* fall through */ }
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_SHIFT_DEFS));
+    }
+
+    function saveShiftDefs() {
+      localStorage.setItem('qingzheng-shift-defs', JSON.stringify(SHIFT_DEFS));
+    }
+
+    // 获取班次定义（带默认值回退）
+    function getShiftDef(shiftName) {
+      const def = SHIFT_DEFS[shiftName];
+      if (def) return def;
+      // 未知班次：尝试从名称推断
+      const isRest = shiftName.includes('休') || shiftName.includes('假');
+      return {
+        emoji: isRest ? '🏖️' : '📋',
+        cssClass: isRest ? 'rest' : 'day',
+        startTime: null, endTime: null,
+        isWork: !isRest
+      };
+    }
+
+    // 判断是否为工作班次
+    function isWorkShift(shiftName) {
+      return getShiftDef(shiftName).isWork === true;
+    }
+
+    // 判断是否为休息班次
+    function isRestShift(shiftName) {
+      return !isWorkShift(shiftName);
+    }
+
+    // 判断是否为跨日班次
+    function isCrossDayShift(shiftName) {
+      const def = getShiftDef(shiftName);
+      if (!def.isWork || !def.startTime || !def.endTime) return false;
+      if (def.crossDay === true) return true;
+      const [sh, sm] = def.startTime.split(':').map(Number);
+      const [eh, em] = def.endTime.split(':').map(Number);
+      return (eh < sh) || (eh === sh && em < sm);
+    }
+
+    // 解析时间字符串 "HH:MM" -> {h, m}
+    function parseTime(timeStr) {
+      if (!timeStr) return null;
+      const [h, m] = timeStr.split(':').map(Number);
+      return { h, m };
+    }
+
+    // 计算班次时长（小时）
+    function getShiftDurationHours(shiftName) {
+      const def = getShiftDef(shiftName);
+      if (!def.isWork || !def.startTime || !def.endTime) return 0;
+      const [sh, sm] = def.startTime.split(':').map(Number);
+      const [eh, em] = def.endTime.split(':').map(Number);
+      let totalMinutes = (eh * 60 + em) - (sh * 60 + sm);
+      if (totalMinutes <= 0) totalMinutes += 24 * 60; // 跨日
+      return totalMinutes / 60;
+    }
+
     // ===== Config =====
     let CYCLE = JSON.parse(localStorage.getItem('qingzheng-cycle')) || ['白班', '夜班', '休息', '白班', '夜班', '休息', '休息', '休息'];
-    // 使用本地午夜（非 UTC 午夜），避免时区偏移导致周期计算错误
     let ANCHOR_DATE = (function() {
       const saved = localStorage.getItem('qingzheng-anchor');
       const parts = (saved || '2026-04-18').split('-');
@@ -1903,357 +2004,76 @@
 
     // ===== 中国法定节假日数据 (2025-2030) =====
     const HOLIDAYS = {
-      // 2025年
-      '2025-01-01': '元旦',
-      '2025-01-28': '除夕',
-      '2025-01-29': '春节',
-      '2025-01-30': '春节',
-      '2025-01-31': '春节',
-      '2025-02-01': '春节',
-      '2025-02-02': '春节',
-      '2025-02-03': '春节',
-      '2025-04-04': '清明',
-      '2025-05-01': '劳动节',
-      '2025-05-02': '劳动节',
-      '2025-05-03': '劳动节',
-      '2025-05-04': '劳动节',
-      '2025-05-05': '劳动节',
-      '2025-05-31': '端午',
-      '2025-06-01': '端午',
-      '2025-06-02': '端午',
-      '2025-10-01': '国庆',
-      '2025-10-02': '国庆',
-      '2025-10-03': '国庆',
-      '2025-10-04': '国庆',
-      '2025-10-05': '国庆',
-      '2025-10-06': '国庆',
-      '2025-10-07': '国庆',
-      '2025-10-08': '中秋',
-
-      // 2026年
-      '2026-01-01': '元旦',
-      '2026-02-16': '除夕',
-      '2026-02-17': '春节',
-      '2026-02-18': '春节',
-      '2026-02-19': '春节',
-      '2026-02-20': '春节',
-      '2026-02-21': '春节',
-      '2026-02-22': '春节',
-      '2026-04-05': '清明',
-      '2026-05-01': '劳动节',
-      '2026-05-02': '劳动节',
-      '2026-05-03': '劳动节',
-      '2026-05-04': '劳动节',
-      '2026-05-05': '劳动节',
-      '2026-06-19': '端午',
-      '2026-06-20': '端午',
-      '2026-06-21': '端午',
-      '2026-09-25': '中秋',
-      '2026-10-01': '国庆',
-      '2026-10-02': '国庆',
-      '2026-10-03': '国庆',
-      '2026-10-04': '国庆',
-      '2026-10-05': '国庆',
-      '2026-10-06': '国庆',
-      '2026-10-07': '国庆',
-
-      // 2027年
-      '2027-01-01': '元旦',
-      '2027-02-05': '除夕',
-      '2027-02-06': '春节',
-      '2027-02-07': '春节',
-      '2027-02-08': '春节',
-      '2027-02-09': '春节',
-      '2027-02-10': '春节',
-      '2027-02-11': '春节',
-      '2027-02-12': '春节',
-      '2027-04-05': '清明',
-      '2027-05-01': '劳动节',
-      '2027-05-02': '劳动节',
-      '2027-05-03': '劳动节',
-      '2027-05-04': '劳动节',
-      '2027-05-05': '劳动节',
-      '2027-06-09': '端午',
-      '2027-09-15': '中秋',
-      '2027-10-01': '国庆',
-      '2027-10-02': '国庆',
-      '2027-10-03': '国庆',
-      '2027-10-04': '国庆',
-      '2027-10-05': '国庆',
-      '2027-10-06': '国庆',
-      '2027-10-07': '国庆',
-
-      // 2028年
-      '2028-01-01': '元旦',
-      '2028-01-25': '除夕',
-      '2028-01-26': '春节',
-      '2028-01-27': '春节',
-      '2028-01-28': '春节',
-      '2028-01-29': '春节',
-      '2028-01-30': '春节',
-      '2028-01-31': '春节',
-      '2028-04-04': '清明',
-      '2028-05-01': '劳动节',
-      '2028-05-02': '劳动节',
-      '2028-05-03': '劳动节',
-      '2028-05-04': '劳动节',
-      '2028-05-05': '劳动节',
-      '2028-05-28': '端午',
-      '2028-10-01': '国庆',
-      '2028-10-02': '国庆',
-      '2028-10-03': '中秋国庆',
-      '2028-10-04': '国庆',
-      '2028-10-05': '国庆',
-      '2028-10-06': '国庆',
-      '2028-10-07': '国庆',
-
-      // 2029年
-      '2029-01-01': '元旦',
-      '2029-02-12': '除夕',
-      '2029-02-13': '春节',
-      '2029-02-14': '春节',
-      '2029-02-15': '春节',
-      '2029-02-16': '春节',
-      '2029-02-17': '春节',
-      '2029-02-18': '春节',
-      '2029-02-19': '春节',
-      '2029-04-04': '清明',
-      '2029-05-01': '劳动节',
-      '2029-05-02': '劳动节',
-      '2029-05-03': '劳动节',
-      '2029-05-04': '劳动节',
-      '2029-05-05': '劳动节',
-      '2029-06-16': '端午',
-      '2029-09-22': '中秋',
-      '2029-10-01': '国庆',
-      '2029-10-02': '国庆',
-      '2029-10-03': '国庆',
-      '2029-10-04': '国庆',
-      '2029-10-05': '国庆',
-      '2029-10-06': '国庆',
-      '2029-10-07': '国庆',
-
-      // 2030年
-      '2030-01-01': '元旦',
-      '2030-02-02': '除夕',
-      '2030-02-03': '春节',
-      '2030-02-04': '春节',
-      '2030-02-05': '春节',
-      '2030-02-06': '春节',
-      '2030-02-07': '春节',
-      '2030-02-08': '春节',
-      '2030-02-09': '春节',
-      '2030-04-05': '清明',
-      '2030-05-01': '劳动节',
-      '2030-05-02': '劳动节',
-      '2030-05-03': '劳动节',
-      '2030-05-04': '劳动节',
-      '2030-05-05': '劳动节',
-      '2030-06-05': '端午',
-      '2030-09-12': '中秋',
-      '2030-10-01': '国庆',
-      '2030-10-02': '国庆',
-      '2030-10-03': '国庆',
-      '2030-10-04': '国庆',
-      '2030-10-05': '国庆',
-      '2030-10-06': '国庆',
-      '2030-10-07': '国庆'
+      '2025-01-01':'元旦','2025-01-28':'除夕','2025-01-29':'春节','2025-01-30':'春节','2025-01-31':'春节','2025-02-01':'春节','2025-02-02':'春节','2025-02-03':'春节','2025-04-04':'清明','2025-05-01':'劳动节','2025-05-02':'劳动节','2025-05-03':'劳动节','2025-05-04':'劳动节','2025-05-05':'劳动节','2025-05-31':'端午','2025-06-01':'端午','2025-06-02':'端午','2025-10-01':'国庆','2025-10-02':'国庆','2025-10-03':'国庆','2025-10-04':'国庆','2025-10-05':'国庆','2025-10-06':'国庆','2025-10-07':'国庆','2025-10-08':'中秋',
+      '2026-01-01':'元旦','2026-02-16':'除夕','2026-02-17':'春节','2026-02-18':'春节','2026-02-19':'春节','2026-02-20':'春节','2026-02-21':'春节','2026-02-22':'春节','2026-04-05':'清明','2026-05-01':'劳动节','2026-05-02':'劳动节','2026-05-03':'劳动节','2026-05-04':'劳动节','2026-05-05':'劳动节','2026-06-19':'端午','2026-06-20':'端午','2026-06-21':'端午','2026-09-25':'中秋','2026-10-01':'国庆','2026-10-02':'国庆','2026-10-03':'国庆','2026-10-04':'国庆','2026-10-05':'国庆','2026-10-06':'国庆','2026-10-07':'国庆',
+      '2027-01-01':'元旦','2027-02-05':'除夕','2027-02-06':'春节','2027-02-07':'春节','2027-02-08':'春节','2027-02-09':'春节','2027-02-10':'春节','2027-02-11':'春节','2027-02-12':'春节','2027-04-05':'清明','2027-05-01':'劳动节','2027-05-02':'劳动节','2027-05-03':'劳动节','2027-05-04':'劳动节','2027-05-05':'劳动节','2027-06-09':'端午','2027-09-15':'中秋','2027-10-01':'国庆','2027-10-02':'国庆','2027-10-03':'国庆','2027-10-04':'国庆','2027-10-05':'国庆','2027-10-06':'国庆','2027-10-07':'国庆',
+      '2028-01-01':'元旦','2028-01-25':'除夕','2028-01-26':'春节','2028-01-27':'春节','2028-01-28':'春节','2028-01-29':'春节','2028-01-30':'春节','2028-01-31':'春节','2028-04-04':'清明','2028-05-01':'劳动节','2028-05-02':'劳动节','2028-05-03':'劳动节','2028-05-04':'劳动节','2028-05-05':'劳动节','2028-05-28':'端午','2028-10-01':'国庆','2028-10-02':'国庆','2028-10-03':'中秋国庆','2028-10-04':'国庆','2028-10-05':'国庆','2028-10-06':'国庆','2028-10-07':'国庆',
+      '2029-01-01':'元旦','2029-02-12':'除夕','2029-02-13':'春节','2029-02-14':'春节','2029-02-15':'春节','2029-02-16':'春节','2029-02-17':'春节','2029-02-18':'春节','2029-02-19':'春节','2029-04-04':'清明','2029-05-01':'劳动节','2029-05-02':'劳动节','2029-05-03':'劳动节','2029-05-04':'劳动节','2029-05-05':'劳动节','2029-06-16':'端午','2029-09-22':'中秋','2029-10-01':'国庆','2029-10-02':'国庆','2029-10-03':'国庆','2029-10-04':'国庆','2029-10-05':'国庆','2029-10-06':'国庆','2029-10-07':'国庆',
+      '2030-01-01':'元旦','2030-02-02':'除夕','2030-02-03':'春节','2030-02-04':'春节','2030-02-05':'春节','2030-02-06':'春节','2030-02-07':'春节','2030-02-08':'春节','2030-02-09':'春节','2030-04-05':'清明','2030-05-01':'劳动节','2030-05-02':'劳动节','2030-05-03':'劳动节','2030-05-04':'劳动节','2030-05-05':'劳动节','2030-06-05':'端午','2030-09-12':'中秋','2030-10-01':'国庆','2030-10-02':'国庆','2030-10-03':'国庆','2030-10-04':'国庆','2030-10-05':'国庆','2030-10-06':'国庆','2030-10-07':'国庆'
     };
 
     // ===== 二十四节气数据 =====
-    const SOLAR_TERMS = [
-      '小寒', '大寒', '立春', '雨水', '惊蛰', '春分',
-      '清明', '谷雨', '立夏', '小满', '芒种', '夏至',
-      '小暑', '大暑', '立秋', '处暑', '白露', '秋分',
-      '寒露', '霜降', '立冬', '小雪', '大雪', '冬至'
-    ];
-
+    const SOLAR_TERMS = ['小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种','夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪','冬至'];
     const SOLAR_TERM_INFO = {
-      '小寒': { icon: '❄️', month: 1 }, '大寒': { icon: '🧊', month: 1 },
-      '立春': { icon: '🌱', month: 2 }, '雨水': { icon: '🌧️', month: 2 },
-      '惊蛰': { icon: '⚡', month: 3 }, '春分': { icon: '🌸', month: 3 },
-      '清明': { icon: '🌿', month: 4 }, '谷雨': { icon: '🌾', month: 4 },
-      '立夏': { icon: '☀️', month: 5 }, '小满': { icon: '🌾', month: 5 },
-      '芒种': { icon: '🌾', month: 6 }, '夏至': { icon: '🌞', month: 6 },
-      '小暑': { icon: '🌡️', month: 7 }, '大暑': { icon: '🔥', month: 7 },
-      '立秋': { icon: '🍂', month: 8 }, '处暑': { icon: '🌅', month: 8 },
-      '白露': { icon: '💧', month: 9 }, '秋分': { icon: '🍁', month: 9 },
-      '寒露': { icon: '🌙', month: 10 }, '霜降': { icon: '🍂', month: 10 },
-      '立冬': { icon: '❄️', month: 11 }, '小雪': { icon: '🌨️', month: 11 },
-      '大雪': { icon: '❄️', month: 12 }, '冬至': { icon: '⛄', month: 12 }
+      '小寒':{icon:'❄️',month:1},'大寒':{icon:'🧊',month:1},'立春':{icon:'🌱',month:2},'雨水':{icon:'🌧️',month:2},'惊蛰':{icon:'⚡',month:3},'春分':{icon:'🌸',month:3},'清明':{icon:'🌿',month:4},'谷雨':{icon:'🌾',month:4},'立夏':{icon:'☀️',month:5},'小满':{icon:'🌾',month:5},'芒种':{icon:'🌾',month:6},'夏至':{icon:'🌞',month:6},'小暑':{icon:'🌡️',month:7},'大暑':{icon:'🔥',month:7},'立秋':{icon:'🍂',month:8},'处暑':{icon:'🌅',month:8},'白露':{icon:'💧',month:9},'秋分':{icon:'🍁',month:9},'寒露':{icon:'🌙',month:10},'霜降':{icon:'🍂',month:10},'立冬':{icon:'❄️',month:11},'小雪':{icon:'🌨️',month:11},'大雪':{icon:'❄️',month:12},'冬至':{icon:'⛄',month:12}
     };
-
-    // 二十四节气日期计算 (简化版，基于1900-2100年数据)
     const SOLAR_TERM_DATES = {
-      2025: ['01-05','01-20','02-03','02-18','03-05','03-20','04-04','04-20','05-05','05-21','06-05','06-21','07-07','07-22','08-07','08-23','09-07','09-23','10-08','10-23','11-07','11-22','12-07','12-21'],
-      2026: ['01-05','01-20','02-04','02-18','03-06','03-21','04-05','04-20','05-05','05-21','06-06','06-21','07-07','07-23','08-08','08-23','09-08','09-23','10-08','10-24','11-08','11-22','12-07','12-22'],
-      2027: ['01-05','01-20','02-04','02-19','03-06','03-21','04-05','04-20','05-06','05-21','06-06','06-21','07-07','07-23','08-08','08-23','09-08','09-23','10-08','10-24','11-08','11-23','12-07','12-22'],
-      2028: ['01-06','01-21','02-04','02-19','03-05','03-20','04-04','04-20','05-05','05-21','06-05','06-21','07-07','07-22','08-07','08-23','09-07','09-22','10-08','10-23','11-07','11-22','12-07','12-21'],
-      2029: ['01-05','01-20','02-03','02-18','03-05','03-20','04-04','04-20','05-05','05-21','06-05','06-21','07-07','07-22','08-07','08-23','09-07','09-23','10-08','10-23','11-07','11-22','12-07','12-21'],
-      2030: ['01-05','01-20','02-04','02-18','03-06','03-21','04-05','04-20','05-05','05-21','06-06','06-21','07-07','07-23','08-08','08-23','09-08','09-23','10-08','10-24','11-08','11-22','12-07','12-22']
+      2025:['01-05','01-20','02-03','02-18','03-05','03-20','04-04','04-20','05-05','05-21','06-05','06-21','07-07','07-22','08-07','08-23','09-07','09-23','10-08','10-23','11-07','11-22','12-07','12-21'],
+      2026:['01-05','01-20','02-04','02-18','03-06','03-21','04-05','04-20','05-05','05-21','06-06','06-21','07-07','07-23','08-08','08-23','09-08','09-23','10-08','10-24','11-08','11-22','12-07','12-22'],
+      2027:['01-05','01-20','02-04','02-19','03-06','03-21','04-05','04-20','05-06','05-21','06-06','06-21','07-07','07-23','08-08','08-23','09-08','09-23','10-08','10-24','11-08','11-23','12-07','12-22'],
+      2028:['01-06','01-21','02-04','02-19','03-05','03-20','04-04','04-20','05-05','05-21','06-05','06-21','07-07','07-22','08-07','08-23','09-07','09-22','10-08','10-23','11-07','11-22','12-07','12-21'],
+      2029:['01-05','01-20','02-03','02-18','03-05','03-20','04-04','04-20','05-05','05-21','06-05','06-21','07-07','07-22','08-07','08-23','09-07','09-23','10-08','10-23','11-07','11-22','12-07','12-21'],
+      2030:['01-05','01-20','02-04','02-18','03-06','03-21','04-05','04-20','05-05','05-21','06-06','06-21','07-07','07-23','08-08','08-23','09-08','09-23','10-08','10-24','11-08','11-22','12-07','12-22']
     };
 
     // ===== 农历转换数据 =====
-    const LUNAR_INFO = [
-      0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
-      0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
-      0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
-      0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
-      0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
-      0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,
-      0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
-      0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b5a0,0x195a6,
-      0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
-      0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,
-      0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
-      0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
-      0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
-      0x05aa0,0x076a3,0x096d0,0x04bd7,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
-      0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0
-    ];
-
+    const LUNAR_INFO = [0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b5a0,0x195a6,0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,0x05aa0,0x076a3,0x096d0,0x04bd7,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0];
     const Gan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
     const Zhi = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
     const Animals = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
     const LunarMonths = ['正','二','三','四','五','六','七','八','九','十','冬','腊'];
-    const LunarDays = ['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
-                      '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
-                      '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+    const LunarDays = ['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十','廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
 
-    // 计算农历日期
     function getLunarDate(date) {
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const day = date.getDate();
-
       const baseDate = new Date(1900, 0, 31);
       let offset = Math.floor((date - baseDate) / 86400000);
-
-      let i, leap = 0, temp = 0;
-      let yearCyl, monCyl, dayCyl;
-      let baseYear = 1900;
-      let baseMonth = 1;
-      let baseDay = 31;
-
-      for (i = baseYear; i < 2101 && offset > 0; i++) {
-        temp = lYearDays(i);
-        offset -= temp;
-      }
-      if (offset < 0) {
-        offset += temp;
-        i--;
-      }
-
+      let i, leap = 0, temp = 0, yearCyl, isLeap = false;
+      for (i = 1900; i < 2101 && offset > 0; i++) { temp = lYearDays(i); offset -= temp; }
+      if (offset < 0) { offset += temp; i--; }
       const lunarYear = i;
       yearCyl = i - 1900 + 36;
-
       leap = leapMonth(i);
-      let isLeap = false;
-
       for (i = 1; i < 13 && offset > 0; i++) {
-        if (leap > 0 && i === (leap + 1) && isLeap === false) {
-          --i;
-          isLeap = true;
-          temp = leapDays(lunarYear);
-        } else {
-          temp = monthDays(lunarYear, i);
-        }
-
+        if (leap > 0 && i === (leap + 1) && isLeap === false) { --i; isLeap = true; temp = leapDays(lunarYear); }
+        else { temp = monthDays(lunarYear, i); }
         if (isLeap === true && i === (leap + 1)) isLeap = false;
         offset -= temp;
       }
-
-      if (offset === 0 && leap > 0 && i === leap + 1) {
-        if (isLeap) {
-          isLeap = false;
-        } else {
-          isLeap = true;
-          --i;
-        }
-      }
-
-      if (offset < 0) {
-        offset += temp;
-        --i;
-      }
-
-      const lunarMonth = i;
-      monCyl = (yearCyl - 1) * 12 + i + 13;
-      const lunarDay = offset + 1;
-      dayCyl = offset + 40;
-
-      return {
-        year: lunarYear,
-        month: lunarMonth,
-        day: lunarDay,
-        isLeap: isLeap,
-        yearGanZhi: cyclical(yearCyl),
-        zodiac: Animals[(yearCyl - 4) % 12],
-        monthStr: (isLeap ? '闰' : '') + LunarMonths[lunarMonth - 1] + '月',
-        dayStr: LunarDays[lunarDay - 1]
-      };
+      if (offset === 0 && leap > 0 && i === leap + 1) { if (isLeap) { isLeap = false; } else { isLeap = true; --i; } }
+      if (offset < 0) { offset += temp; --i; }
+      const lunarMonth = i, lunarDay = offset + 1;
+      return { year: lunarYear, month: lunarMonth, day: lunarDay, isLeap: isLeap, yearGanZhi: cyclical(yearCyl), zodiac: Animals[(yearCyl - 4) % 12], monthStr: (isLeap ? '闰' : '') + LunarMonths[lunarMonth - 1] + '月', dayStr: LunarDays[lunarDay - 1] };
     }
+    function lYearDays(y) { let i, sum = 348; for (i = 0x8000; i > 0x8; i >>= 1) sum += (LUNAR_INFO[y - 1900] & i) ? 1 : 0; return sum + leapDays(y); }
+    function leapMonth(y) { return LUNAR_INFO[y - 1900] & 0xf; }
+    function leapDays(y) { if (leapMonth(y)) return (LUNAR_INFO[y - 1900] & 0x10000) ? 30 : 29; return 0; }
+    function monthDays(y, m) { return (LUNAR_INFO[y - 1900] & (0x10000 >> m)) ? 30 : 29; }
+    function cyclical(num) { return Gan[num % 10] + Zhi[num % 12]; }
 
-    function lYearDays(y) {
-      let i, sum = 348;
-      for (i = 0x8000; i > 0x8; i >>= 1) {
-        sum += (LUNAR_INFO[y - 1900] & i) ? 1 : 0;
-      }
-      return sum + leapDays(y);
-    }
-
-    function leapMonth(y) {
-      return LUNAR_INFO[y - 1900] & 0xf;
-    }
-
-    function leapDays(y) {
-      if (leapMonth(y)) {
-        return ((LUNAR_INFO[y - 1900] & 0x10000) ? 30 : 29);
-      } else {
-        return 0;
-      }
-    }
-
-    function monthDays(y, m) {
-      return ((LUNAR_INFO[y - 1900] & (0x10000 >> m)) ? 30 : 29);
-    }
-
-    function cyclical(num) {
-      return Gan[num % 10] + Zhi[num % 12];
-    }
-
-    // 获取二十四节气
     function getSolarTerm(date) {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${month}-${day}`;
-
-      // 查找对应的节气
+      const dateStr = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const termDates = SOLAR_TERM_DATES[year] || SOLAR_TERM_DATES[2026];
       const termIndex = termDates.indexOf(dateStr);
-
-      if (termIndex !== -1) {
-        return SOLAR_TERMS[termIndex];
-      }
-      return null;
+      return termIndex !== -1 ? SOLAR_TERMS[termIndex] : null;
     }
-
-    // 获取节假日
-    function getHoliday(date) {
-      const dateStr = formatDateISO(date);
-      return HOLIDAYS[dateStr] || null;
-    }
+    function getHoliday(date) { const dateStr = formatDateISO(date); return HOLIDAYS[dateStr] || null; }
 
     // ===== Theme =====
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = document.getElementById('themeIcon');
     const savedTheme = localStorage.getItem('qingzheng-theme');
-    if (savedTheme) {
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      themeIcon.className = savedTheme === 'light' ? 'fas fa-sun' : 'fas fa-moon';
-    }
-
+    if (savedTheme) { document.documentElement.setAttribute('data-theme', savedTheme); themeIcon.className = savedTheme === 'light' ? 'fas fa-sun' : 'fas fa-moon'; }
     themeToggle.addEventListener('click', () => {
       const current = document.documentElement.getAttribute('data-theme');
       const next = current === 'light' ? 'dark' : 'light';
@@ -2263,22 +2083,16 @@
     });
 
     // ===== State =====
-    let viewYear, viewMonth;
-    let selectedDate = null;
+    let viewYear, viewMonth, selectedDate = null;
 
     // ===== Init =====
     (function init() {
       const today = new Date();
       viewYear = today.getFullYear();
       viewMonth = today.getMonth();
-
-      // Set random slogan
       document.getElementById('slogan').textContent = SLOGANS[Math.floor(Math.random() * SLOGANS.length)];
-
       render();
-      // 默认选中今日，展示详情面板
       showDetail(today);
-      // 启动实时时钟更新
       setInterval(updateLiveClockAndCountdown, 1000);
     })();
 
@@ -2286,307 +2100,226 @@
       const diff = Math.round((date - ANCHOR_DATE) / (1000 * 60 * 60 * 24));
       return ((diff % CYCLE.length) + CYCLE.length) % CYCLE.length;
     }
+    function getShift(date) { return CYCLE[getCycleIndex(date)]; }
 
-    function getShift(date) {
-      return CYCLE[getCycleIndex(date)];
-    }
-
-    // ===== 班次时间计算 (白班 8:00-20:00 / 夜班 20:00-次日8:00) =====
+    // ===== 班次时间计算 (基于 SHIFT_DEFS) =====
     function getShiftTimes(date) {
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const day = date.getDate();
-
-      // 白班：当日 8:00 - 20:00
-      const dayStart = new Date(year, month, day, 8, 0, 0);
-      const dayEnd = new Date(year, month, day, 20, 0, 0);
-
-      // 夜班：当日 20:00 - 次日 8:00
-      const nightStart = new Date(year, month, day, 20, 0, 0);
-      const nightEnd = new Date(year, month, day + 1, 8, 0, 0);
-
       const shift = getShift(date);
-
-      if (shift === '白班') {
-        return { start: dayStart, end: dayEnd };
-      } else if (shift === '夜班') {
-        return { start: nightStart, end: nightEnd };
+      const def = getShiftDef(shift);
+      if (!def.isWork || !def.startTime || !def.endTime) return null;
+      const year = date.getFullYear(), month = date.getMonth(), day = date.getDate();
+      const [sh, sm] = def.startTime.split(':').map(Number);
+      const [eh, em] = def.endTime.split(':').map(Number);
+      const start = new Date(year, month, day, sh, sm, 0);
+      let end;
+      if (isCrossDayShift(shift)) {
+        end = new Date(year, month, day + 1, eh, em, 0);
       } else {
-        return null; // 休息
+        end = new Date(year, month, day, eh, em, 0);
       }
+      return { start, end };
     }
 
-    // 获取当前有效班次（考虑跨日夜班：夜班 20:00→次日 08:00）
+    // 获取当前有效班次（考虑跨日）
     function getEffectiveShiftInfo() {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-
       const yesterdayShift = getShift(yesterday);
-      const today8am = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 0, 0);
 
-      // 如果现在是 08:00 之前，且昨天是夜班，则仍在昨天的夜班中
-      if (now < today8am && yesterdayShift === '夜班') {
-        const nightStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 20, 0, 0);
-        const nightEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 0, 0);
-        return {
-          shift: '夜班',
-          isCrossDay: true,
-          start: nightStart,
-          end: nightEnd
-        };
+      // 检查昨天的跨日班次是否仍有效
+      if (isCrossDayShift(yesterdayShift)) {
+        const def = getShiftDef(yesterdayShift);
+        const [eh, em] = def.endTime.split(':').map(Number);
+        const crossEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), eh, em, 0);
+        if (now < crossEnd) {
+          const [sh, sm] = def.startTime.split(':').map(Number);
+          const crossStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), sh, sm, 0);
+          return { shift: yesterdayShift, isCrossDay: true, start: crossStart, end: crossEnd };
+        }
       }
 
       const todayShift = getShift(today);
       const times = getShiftTimes(today);
-      return {
-        shift: todayShift,
-        isCrossDay: false,
-        start: times ? times.start : null,
-        end: times ? times.end : null
-      };
+      return { shift: todayShift, isCrossDay: false, start: times ? times.start : null, end: times ? times.end : null };
     }
 
-    // 格式化倒计时 (毫秒 → HH:MM:SS)
     function formatCountdown(ms) {
       if (ms <= 0) return '00:00:00';
       const totalSeconds = Math.floor(ms / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      return `${String(Math.floor(totalSeconds / 3600)).padStart(2, '0')}:${String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`;
     }
 
-    // 计算距离下一个班次上班的时间（用于休息日）
     function getNextWorkCountdown(now) {
       for (let i = 0; i < 14; i++) {
         const checkDate = new Date(now);
         checkDate.setDate(checkDate.getDate() + i);
         const shift = getShift(checkDate);
-        if (shift !== '休息') {
+        if (isWorkShift(shift)) {
           const times = getShiftTimes(checkDate);
-          if (times && times.start > now) {
-            return times.start - now;
-          }
+          if (times && times.start > now) return times.start - now;
         }
       }
       return null;
     }
 
-    // 计算距离最近的休息日还有几天
     function getDaysToNextRest() {
       const today = new Date();
       today.setHours(0,0,0,0);
       for (let i = 0; i <= 14; i++) {
         const checkDate = new Date(today);
         checkDate.setDate(checkDate.getDate() + i);
-        if (getShift(checkDate) === '休息') {
-          return i;
-        }
+        if (isRestShift(getShift(checkDate))) return i;
       }
       return -1;
+    }
+
+    // 获取周期中所有唯一的班次类型
+    function getUniqueShiftsInCycle() {
+      const seen = new Set();
+      const result = [];
+      for (const s of CYCLE) {
+        if (!seen.has(s)) { seen.add(s); result.push(s); }
+      }
+      return result;
+    }
+
+    // 获取所有工作班次（用于统计等）
+    function getWorkShifts() {
+      const result = [];
+      const seen = new Set();
+      for (const s of CYCLE) {
+        if (!seen.has(s) && isWorkShift(s)) { seen.add(s); result.push(s); }
+      }
+      return result;
     }
 
     // 更新实时时钟和倒计时
     function updateLiveClockAndCountdown() {
     try {
       const now = new Date();
-
-      // 1. 实时时钟
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
       document.getElementById('liveClock').textContent = timeStr;
 
-      // 2. 获取有效班次信息（考虑跨日夜班）
       const info = getEffectiveShiftInfo();
       const shift = info.shift;
-
       const workEl = document.getElementById('countdownToWork');
       const offEl = document.getElementById('countdownToOff');
 
-      if (shift === '休息') {
-        // 今日休息，显示距离下次上班的倒计时
+      if (isRestShift(shift)) {
         const nextWorkMs = getNextWorkCountdown(now);
-        if (nextWorkMs !== null) {
-          workEl.textContent = formatCountdown(nextWorkMs);
-        } else {
-          workEl.textContent = '--:--:--';
-        }
+        workEl.textContent = nextWorkMs !== null ? formatCountdown(nextWorkMs) : '--:--:--';
         offEl.textContent = '今日休息';
-        offEl.style.fontSize = '13px';
-        offEl.style.fontWeight = '400';
+        offEl.style.fontSize = '13px'; offEl.style.fontWeight = '400';
       } else {
-        const start = info.start;
-        const end = info.end;
-
+        const start = info.start, end = info.end;
         if (now < start) {
-          // 还没上班：距离上班倒计时
           workEl.textContent = formatCountdown(start - now);
           offEl.textContent = formatCountdown(end - now);
         } else if (now < end) {
-          // 上班中：距离下班倒计时
           workEl.textContent = '已上班';
           offEl.textContent = formatCountdown(end - now);
         } else {
-          // 已下班：显示距离下次上班的倒计时（类似休息日逻辑）
-          workEl.textContent = '已下班';
-          offEl.textContent = '已下班';
+          workEl.textContent = '已下班'; offEl.textContent = '已下班';
           const nextWorkMs = getNextWorkCountdown(now);
-          if (nextWorkMs !== null) {
-            workEl.textContent = formatCountdown(nextWorkMs);
-          }
+          if (nextWorkMs !== null) workEl.textContent = formatCountdown(nextWorkMs);
         }
-
-        offEl.style.fontSize = '';
-        offEl.style.fontWeight = '';
+        offEl.style.fontSize = ''; offEl.style.fontWeight = '';
       }
-
-      // 3. 检测跨日夜班状态变化，动态更新今日班次卡片显示
       updateTodayCardDisplay(info);
-    } catch(e) { /* 静默捕获，确保 setInterval 不中断 */ }
+    } catch(e) { /* silent */ }
     }
 
-    // 动态更新今日班次卡片的班次显示（处理跨日夜班 8:00 切换）
     let lastEffectiveShift = null;
     function updateTodayCardDisplay(info) {
       const shiftKey = info.shift + (info.isCrossDay ? '_crossday' : '');
-      if (shiftKey === lastEffectiveShift) return; // 无变化则跳过
+      if (shiftKey === lastEffectiveShift) return;
       lastEffectiveShift = shiftKey;
-
-      const shiftMap = { '白班': ['day','☀️'], '夜班': ['night','🌙'], '休息': ['rest','🏖️'] };
-      const [cls, emoji] = shiftMap[info.shift] || ['rest', '❓'];
+      const def = getShiftDef(info.shift);
       const td = document.getElementById('todayShift');
-      td.innerHTML = `<span class="today-shift-emoji">${emoji}</span>${info.shift}`;
-      td.className = `today-shift ${cls}`;
-
-      // 更新背景色
-      const shiftClass = info.shift === '白班' ? 'day' : info.shift === '夜班' ? 'night' : 'rest';
-      document.body.setAttribute('data-shift', shiftClass);
+      td.innerHTML = `<span class="today-shift-emoji">${def.emoji}</span>${info.shift}`;
+      td.className = `today-shift ${def.cssClass}`;
+      document.body.setAttribute('data-shift', def.cssClass);
     }
 
-    function getWeekdayCn(date) {
-      return ['周日','周一','周二','周三','周四','周五','周六'][date.getDay()];
-    }
+    function getWeekdayCn(date) { return ['周日','周一','周二','周三','周四','周五','周六'][date.getDay()]; }
+    function formatDate(date) { return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日`; }
+    function formatDateISO(date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
+    function isSameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+    function isToday(date) { return isSameDay(date, new Date()); }
+    function isPast(date) { const today = new Date(); today.setHours(0,0,0,0); return date < today; }
 
-    function formatDate(date) {
-      return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日`;
-    }
-
-    function formatDateISO(date) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-
-    function isSameDay(a, b) {
-      return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
-    }
-
-    function isToday(date) {
-      return isSameDay(date, new Date());
-    }
-
-    function isPast(date) {
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      return date < today;
-    }
-
-    // Calculate next shifts
+    // 动态计算所有工作班次的下一个出现天数
     function calculateNextShifts() {
       const today = new Date();
       today.setHours(0,0,0,0);
-
-      let nextDayDays = -1;
-      let nextNightDays = -1;
+      const workShifts = getWorkShifts();
+      const result = {};
+      for (const ws of workShifts) result[ws] = -1;
 
       for (let i = 1; i <= 30; i++) {
         const futureDate = new Date(today);
         futureDate.setDate(futureDate.getDate() + i);
-
-        if (nextDayDays === -1 && getShift(futureDate) === '白班') {
-          nextDayDays = i;
-        }
-
-        if (nextNightDays === -1 && getShift(futureDate) === '夜班') {
-          nextNightDays = i;
-        }
-
-        if (nextDayDays !== -1 && nextNightDays !== -1) break;
+        const s = getShift(futureDate);
+        if (result[s] === -1) result[s] = i;
+        if (Object.values(result).every(v => v !== -1)) break;
       }
-
-      return { nextDay: nextDayDays, nextNight: nextNightDays };
+      return result;
     }
 
-    // Calculate monthly statistics
+    // 动态统计本月各类型班次数量
     function calculateMonthlyStats(year, month) {
-      let dayCount = 0;
-      let nightCount = 0;
-      let restCount = 0;
-
       const daysInMonth = new Date(year, month + 1, 0).getDate();
-
+      const counts = {};
       for (let d = 1; d <= daysInMonth; d++) {
-        const date = new Date(year, month, d);
-        const shift = getShift(date);
-
-        if (shift === '白班') dayCount++;
-        else if (shift === '夜班') nightCount++;
-        else if (shift === '休息') restCount++;
+        const s = getShift(new Date(year, month, d));
+        counts[s] = (counts[s] || 0) + 1;
       }
-
-      return { dayCount, nightCount, restCount };
+      return counts;
     }
 
-    // 计算连续相同班次天数
     function getConsecutiveShiftDays(date) {
       const shift = getShift(date);
       let count = 1;
-
-      // 向前数
       for (let i = 1; i <= 60; i++) {
-        const prev = new Date(date);
-        prev.setDate(prev.getDate() - i);
-        if (getShift(prev) === shift) count++;
-        else break;
+        const prev = new Date(date); prev.setDate(prev.getDate() - i);
+        if (getShift(prev) === shift) count++; else break;
       }
-
       return count;
     }
 
-    // 计算某日距离周末(下一个休息日)的天数
     function getDaysToWeekend(date) {
       for (let i = 0; i <= 14; i++) {
-        const check = new Date(date);
-        check.setDate(check.getDate() + i);
-        if (getShift(check) === '休息') return i;
+        const check = new Date(date); check.setDate(check.getDate() + i);
+        if (isRestShift(getShift(check))) return i;
       }
       return -1;
     }
 
-    // 计算某月总工时
     function calculateWorkHours(year, month) {
       const stats = calculateMonthlyStats(year, month);
-      return (stats.dayCount + stats.nightCount) * 12;
+      let total = 0;
+      for (const [shiftName, count] of Object.entries(stats)) {
+        if (isWorkShift(shiftName)) {
+          total += count * getShiftDurationHours(shiftName);
+        }
+      }
+      return Math.round(total);
     }
 
-    // Update background based on today's shift (考虑跨日夜班)
     function updateBackgroundShift() {
       const info = getEffectiveShiftInfo();
-      const shiftClass = info.shift === '白班' ? 'day' : info.shift === '夜班' ? 'night' : 'rest';
-      document.body.setAttribute('data-shift', shiftClass);
+      const def = getShiftDef(info.shift);
+      document.body.setAttribute('data-shift', def.cssClass);
     }
 
-    // 计算上月统计（用于趋势对比）
     function getPrevMonthStats() {
-      let prevYear = viewYear;
-      let prevMonth = viewMonth - 1;
+      let prevYear = viewYear, prevMonth = viewMonth - 1;
       if (prevMonth < 0) { prevMonth = 11; prevYear--; }
       return calculateMonthlyStats(prevYear, prevMonth);
     }
 
-    // 趋势文本
     function getTrendText(current, previous) {
       if (current > previous) return { text: `↑ +${current - previous}`, cls: 'up' };
       if (current < previous) return { text: `↓ ${current - previous}`, cls: 'down' };
@@ -2599,263 +2332,225 @@
       updateBackgroundShift();
 
       // Subtitle
-      document.getElementById('subtitle').textContent =
-        `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 ${getWeekdayCn(today)}`;
+      document.getElementById('subtitle').textContent = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 ${getWeekdayCn(today)}`;
 
-      // Today card
+      // Today card date info
       let todayDateInfo = formatDate(today) + ' ' + getWeekdayCn(today);
-
-      // 添加农历信息
       const lunar = getLunarDate(today);
       todayDateInfo += ` 农历${lunar.monthStr}${lunar.dayStr}`;
-
-      // 添加节气信息
       const solarTerm = getSolarTerm(today);
-      if (solarTerm) {
-        const termInfo = SOLAR_TERM_INFO[solarTerm];
-        todayDateInfo += ` ${termInfo.icon}${solarTerm}`;
-      }
-
-      // 添加节假日信息
+      if (solarTerm) { const ti = SOLAR_TERM_INFO[solarTerm]; todayDateInfo += ` ${ti.icon}${solarTerm}`; }
       const holiday = getHoliday(today);
-      if (holiday) {
-        todayDateInfo += ` 🎉${holiday}`;
-      }
-
+      if (holiday) todayDateInfo += ` 🎉${holiday}`;
       document.getElementById('todayDate').textContent = todayDateInfo;
-      // 使用有效班次（考虑跨日夜班）
+
       const effectiveInfo = getEffectiveShiftInfo();
       const shift = effectiveInfo.shift;
-      const shiftMap = { '白班': ['day','☀️'], '夜班': ['night','🌙'], '休息': ['rest','🏖️'] };
-      const [cls, emoji] = shiftMap[shift] || ['rest', '❓'];
+      const def = getShiftDef(shift);
       const td = document.getElementById('todayShift');
-      td.innerHTML = `<span class="today-shift-emoji">${emoji}</span>${shift}`;
-      td.className = `today-shift ${cls}`;
+      td.innerHTML = `<span class="today-shift-emoji">${def.emoji}</span>${shift}`;
+      td.className = `today-shift ${def.cssClass}`;
       document.getElementById('todayCycle').textContent = getCycleIndex(today) + 1;
-
-      // Progress bar
       const progress = (getCycleIndex(today) + 1) / CYCLE.length * 100;
       document.getElementById('progressBar').style.width = `${progress}%`;
 
-      // Next shift info
+      // Next shift info (dynamic)
       const nextShifts = calculateNextShifts();
-      document.getElementById('nextDayInfo').textContent = nextShifts.nextDay === -1 ? 'N/A' : `${nextShifts.nextDay}天`;
-      document.getElementById('nextNightInfo').textContent = nextShifts.nextNight === -1 ? 'N/A' : `${nextShifts.nextNight}天`;
+      const nextContainer = document.getElementById('nextShiftContainer');
+      nextContainer.innerHTML = '';
+      const workShifts = getWorkShifts();
+      for (const ws of workShifts) {
+        const wdef = getShiftDef(ws);
+        const item = mk('div', { cls: 'next-shift-item' });
+        const label = mk('span', { text: `距离下次${ws}:` });
+        const days = nextShifts[ws];
+        const value = mk('span', { cls: `next-shift-${wdef.cssClass}`, text: days === -1 ? 'N/A' : `${days}天` });
+        item.appendChild(label); item.appendChild(value);
+        nextContainer.appendChild(item);
+      }
 
       // Rest countdown
       const restDays = getDaysToNextRest();
       document.getElementById('restCountdown').textContent = restDays === 0 ? '今天!' : restDays > 0 ? `${restDays}天` : 'N/A';
 
-      // Monthly statistics
+      // Monthly statistics (dynamic)
       const stats = calculateMonthlyStats(viewYear, viewMonth);
       const prevStats = getPrevMonthStats();
-      document.getElementById('dayCount').textContent = stats.dayCount;
-      document.getElementById('nightCount').textContent = stats.nightCount;
-      document.getElementById('restCount').textContent = stats.restCount;
+      const uniqueShifts = getUniqueShiftsInCycle();
 
-      // Trends
-      const dayTrend = getTrendText(stats.dayCount, prevStats.dayCount);
-      const nightTrend = getTrendText(stats.nightCount, prevStats.nightCount);
-      const restTrend = getTrendText(stats.restCount, prevStats.restCount);
-      document.getElementById('dayTrend').textContent = dayTrend.text;
-      document.getElementById('dayTrend').className = `stat-trend ${dayTrend.cls}`;
-      document.getElementById('nightTrend').textContent = nightTrend.text;
-      document.getElementById('nightTrend').className = `stat-trend ${nightTrend.cls}`;
-      document.getElementById('restTrend').textContent = restTrend.text;
-      document.getElementById('restTrend').className = `stat-trend ${restTrend.cls}`;
+      // Build stats cards
+      const statsContainer = document.getElementById('statsContainer');
+      statsContainer.innerHTML = '';
+      const displayShifts = uniqueShifts.slice(0, 3); // Show top 3 shift types
+      for (const sn of displayShifts) {
+        const sdef = getShiftDef(sn);
+        const count = stats[sn] || 0;
+        const prevCount = prevStats[sn] || 0;
+        const trend = getTrendText(count, prevCount);
+        const card = mk('div', { cls: `stat-card ${sdef.cssClass}` });
+        card.innerHTML = `<div class="stat-icon">${sdef.emoji}</div><div class="stat-value">${count}</div><div class="stat-label">本月${sn}</div><div class="stat-trend ${trend.cls}">${trend.text}</div>`;
+        statsContainer.appendChild(card);
+      }
+      // Adjust grid columns for 1-2 stats
+      if (displayShifts.length === 1) statsContainer.style.gridTemplateColumns = '1fr';
+      else if (displayShifts.length === 2) statsContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+      else statsContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
 
       // Work hours
       const workHours = calculateWorkHours(viewYear, viewMonth);
       document.getElementById('workHours').textContent = workHours;
 
-      // Ring chart
-      const totalDays = stats.dayCount + stats.nightCount + stats.restCount;
-      const dayPct = totalDays > 0 ? (stats.dayCount / totalDays * 100) : 0;
-      const nightPct = totalDays > 0 ? (stats.nightCount / totalDays * 100) : 0;
-      const restPct = totalDays > 0 ? (stats.restCount / totalDays * 100) : 0;
-      const workPct = totalDays > 0 ? ((stats.dayCount + stats.nightCount) / totalDays * 100) : 0;
-      document.getElementById('ringChart').style.background = `conic-gradient(
-        var(--day-color) 0% ${dayPct}%,
-        var(--night-color) ${dayPct}% ${dayPct + nightPct}%,
-        var(--rest-color) ${dayPct + nightPct}% 100%
-      )`;
+      // Ring chart (dynamic)
+      const totalDays = Object.values(stats).reduce((a, b) => a + b, 0) || 1;
+      let gradientStr = '';
+      let cumulativePct = 0;
+      for (const sn of uniqueShifts) {
+        const sdef = getShiftDef(sn);
+        const pct = ((stats[sn] || 0) / totalDays) * 100;
+        gradientStr += `${sdef.cssClass === 'day' ? 'var(--day-color)' : sdef.cssClass === 'night' ? 'var(--night-color)' : sdef.cssClass === 'rest' ? 'var(--rest-color)' : sdef.cssClass === 'noon' ? 'var(--noon-color)' : sdef.cssClass === 'morning' ? 'var(--morning-color)' : sdef.cssClass === 'evening' ? 'var(--evening-color)' : 'var(--rest-color)'} ${cumulativePct}% ${cumulativePct + pct}%, `;
+        cumulativePct += pct;
+      }
+      gradientStr = gradientStr.replace(/,\s*$/, '');
+      document.getElementById('ringChart').style.background = `conic-gradient(${gradientStr})`;
+      const workPct = ((Object.entries(stats).reduce((sum, [sn, cnt]) => sum + (isWorkShift(sn) ? cnt : 0), 0)) / totalDays) * 100;
       document.getElementById('ringChartInner').textContent = `${Math.round(workPct)}%`;
-      document.getElementById('ringDay').textContent = `白班 ${stats.dayCount}天`;
-      document.getElementById('ringNight').textContent = `夜班 ${stats.nightCount}天`;
-      document.getElementById('ringRest').textContent = `休息 ${stats.restCount}天`;
+
+      // Ring legend
+      const ringLegend = document.getElementById('ringLegend');
+      ringLegend.innerHTML = '';
+      for (const sn of uniqueShifts) {
+        const sdef = getShiftDef(sn);
+        const item = mk('div', { cls: 'ring-legend-item' });
+        const dot = mk('div', { cls: 'ring-legend-dot', html: '' });
+        dot.style.background = `var(--${sdef.cssClass}-color)`;
+        const label = mk('span', { text: `${sn} ${stats[sn] || 0}天` });
+        item.appendChild(dot); item.appendChild(label);
+        ringLegend.appendChild(item);
+      }
+
+      // Legend
+      renderLegend();
+
+      // Footer hint
+      const cycleNames = getUniqueShiftsInCycle();
+      document.getElementById('footerHint').innerHTML = `💡 点击任意日期可查看详情<br>周期：${cycleNames.join(' ')}`;
 
       // Month title
       document.getElementById('monthTitle').textContent = `${viewYear}年${viewMonth+1}月`;
 
       // Nav buttons
       const today2 = new Date();
-      const minYear = today2.getFullYear() - 1;
-      const maxYear = today2.getFullYear() + 1;
-      document.getElementById('prevBtn').disabled = (viewYear === minYear && viewMonth === 0);
-      document.getElementById('nextBtn').disabled = (viewYear === maxYear && viewMonth === 11);
+      document.getElementById('prevBtn').disabled = (viewYear === today2.getFullYear() - 1 && viewMonth === 0);
+      document.getElementById('nextBtn').disabled = (viewYear === today2.getFullYear() + 1 && viewMonth === 11);
 
-      // Calendar
+      // Calendar grid
       const grid = document.getElementById('daysGrid');
       grid.innerHTML = '';
-
       const firstDay = new Date(viewYear, viewMonth, 1);
-      const startDow = (firstDay.getDay() + 6) % 7; // Monday=0
+      const startDow = (firstDay.getDay() + 6) % 7;
       const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-
-      // Determine current week row for highlighting
       const todayOfWeek = today.getDay();
       const todayMonday = new Date(today);
       todayMonday.setDate(today.getDate() - ((todayOfWeek + 6) % 7));
       const todaySunday = new Date(todayMonday);
       todaySunday.setDate(todayMonday.getDate() + 6);
 
-      // Empty cells before
-      for (let i = 0; i < startDow; i++) {
-        grid.appendChild(mk('div', { cls: 'day-cell empty' }));
-      }
+      for (let i = 0; i < startDow; i++) grid.appendChild(mk('div', { cls: 'day-cell empty' }));
 
-      // Day cells with stagger animation
       let cellIndex = 0;
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(viewYear, viewMonth, d);
         const s = getShift(date);
-        const shiftCls = { '白班': 'shift-day', '夜班': 'shift-night', '休息': 'shift-rest' }[s] || 'shift-rest';
-        const dotCls = { '白班': 'day', '夜班': 'night', '休息': 'rest' }[s] || 'rest';
+        const sdef = getShiftDef(s);
+        const shiftCls = `shift-${sdef.cssClass}`;
         const past = isPast(date) && !isToday(date);
         const todayCls = isToday(date) ? ' today' : '';
         const pastCls = past ? ' past' : '';
-
-        // Current week highlight
         let weekCls = '';
         if (date >= todayMonday && date <= todaySunday && viewMonth === today.getMonth() && viewYear === today.getFullYear()) {
           weekCls = ' current-week';
         }
-
-        const cell = mk('div', {
-          cls: `day-cell ${shiftCls}${todayCls}${pastCls}${weekCls} animate-in`,
-          onclick: () => showDetail(date)
-        });
-        // 标记当前选中日期
-        if (selectedDate && isSameDay(date, selectedDate)) {
-          cell.classList.add('selected');
-        }
+        const cell = mk('div', { cls: `day-cell ${shiftCls}${todayCls}${pastCls}${weekCls} animate-in`, onclick: () => showDetail(date) });
+        if (selectedDate && isSameDay(date, selectedDate)) cell.classList.add('selected');
         cell.style.animationDelay = `${cellIndex * 20}ms`;
 
-        // Tooltip
-        const shiftName = s;
-        const tooltip = mk('div', { cls: 'cell-tooltip', text: shiftName });
+        const tooltip = mk('div', { cls: 'cell-tooltip', text: s });
         cell.appendChild(tooltip);
 
-        // Add holiday badge if exists
         const holiday = getHoliday(date);
-        if (holiday) {
-          const holidayBadge = mk('div', { cls: 'holiday-badge', text: holiday.substring(0, 2) });
-          cell.appendChild(holidayBadge);
-        }
+        if (holiday) { const hb = mk('div', { cls: 'holiday-badge', text: holiday.substring(0, 2) }); cell.appendChild(hb); }
 
-        const dot = mk('div', { cls: `shift-dot ${dotCls}` });
-        const num = mk('div', { cls: 'day-num', text: d });
+        const dotEl = mk('div', { cls: `shift-dot ${sdef.cssClass}` });
+        const numEl = mk('div', { cls: 'day-num', text: d });
 
-        // Add lunar date
-        const lunar = getLunarDate(date);
-        const solarTerm = getSolarTerm(date);
-
-        let lunarText = '';
-        let lunarClass = 'lunar-date';
-
-        if (solarTerm) {
-          const termInfo = SOLAR_TERM_INFO[solarTerm];
-          lunarText = `${termInfo.icon}${solarTerm}`;
-          lunarClass = 'lunar-date solar-term';
-        } else if (lunar.day === 1) {
-          lunarText = lunar.monthStr;
-        } else {
-          lunarText = lunar.dayStr;
-        }
-
+        const lunarD = getLunarDate(date);
+        const term = getSolarTerm(date);
+        let lunarText = '', lunarClass = 'lunar-date';
+        if (term) { const ti = SOLAR_TERM_INFO[term]; lunarText = `${ti.icon}${term}`; lunarClass = 'lunar-date solar-term'; }
+        else if (lunarD.day === 1) lunarText = lunarD.monthStr;
+        else lunarText = lunarD.dayStr;
         const lunarEl = mk('div', { cls: lunarClass, text: lunarText });
 
-        cell.appendChild(dot);
-        cell.appendChild(num);
-        cell.appendChild(lunarEl);
+        cell.appendChild(dotEl); cell.appendChild(numEl); cell.appendChild(lunarEl);
         grid.appendChild(cell);
-
         cellIndex++;
       }
 
-      // Render heatmap
       renderHeatmap();
-
-      // 每次渲染后刷新一次倒计时（保证切换月份后依然准确）
       updateLiveClockAndCountdown();
     }
 
-    // ===== Year Heatmap (Mini Calendars) =====
+    // ===== Legend (dynamic) =====
+    function renderLegend() {
+      const container = document.getElementById('legendContainer');
+      const uniqueShifts = getUniqueShiftsInCycle();
+      container.innerHTML = '';
+      for (const sn of uniqueShifts) {
+        const sdef = getShiftDef(sn);
+        const item = mk('div', { cls: 'legend-item' });
+        const dot = mk('div', { cls: `legend-dot ${sdef.cssClass}` });
+        const label = mk('span', { text: sn });
+        if (sdef.isWork && sdef.startTime && sdef.endTime) {
+          label.textContent = `${sn} (${sdef.startTime}-${sdef.endTime}${isCrossDayShift(sn) ? '次日' : ''})`;
+        }
+        item.appendChild(dot); item.appendChild(label);
+        container.appendChild(item);
+      }
+    }
+
+    // ===== Year Heatmap =====
     function renderHeatmap() {
       const grid = document.getElementById('heatmapGrid');
       grid.innerHTML = '';
       const today = new Date();
       const weekdays = ['一','二','三','四','五','六','日'];
-
       for (let m = 0; m < 12; m++) {
         const isCurrent = (viewYear === today.getFullYear() && m === today.getMonth());
         const daysInMonth = new Date(viewYear, m + 1, 0).getDate();
-        const firstDow = (new Date(viewYear, m, 1).getDay() + 6) % 7; // Mon=0
-
+        const firstDow = (new Date(viewYear, m, 1).getDay() + 6) % 7;
         const monthDiv = mk('div', { cls: 'heatmap-month' + (isCurrent ? ' current-month' : '') });
-
-        // Weekday headers
         const wdRow = mk('div', { cls: 'mini-cal-weekdays' });
-        for (let w = 0; w < 7; w++) {
-          const wd = mk('div', { cls: 'mini-cal-wd', text: weekdays[w] });
-          wdRow.appendChild(wd);
-        }
+        for (let w = 0; w < 7; w++) { const wd = mk('div', { cls: 'mini-cal-wd', text: weekdays[w] }); wdRow.appendChild(wd); }
         monthDiv.appendChild(wdRow);
-
-        // Day grid
         const calGrid = mk('div', { cls: 'mini-cal-grid' });
-
-        // Empty cells before first day
-        for (let i = 0; i < firstDow; i++) {
-          calGrid.appendChild(mk('div', { cls: 'mini-cal-day empty' }));
-        }
-
-        // Day cells
+        for (let i = 0; i < firstDow; i++) calGrid.appendChild(mk('div', { cls: 'mini-cal-day empty' }));
         for (let d = 1; d <= daysInMonth; d++) {
           const date = new Date(viewYear, m, d);
           const shift = getShift(date);
-          const shiftCls = { '白班': 'shift-day', '夜班': 'shift-night', '休息': 'shift-rest' }[shift] || 'shift-rest';
+          const sdef = getShiftDef(shift);
+          const shiftCls = `shift-${sdef.cssClass}`;
           const isTodayCell = isToday(date);
           const isSelectedCell = selectedDate && isSameDay(date, selectedDate);
-          const dayEl = mk('div', {
-            cls: 'mini-cal-day ' + shiftCls + (isTodayCell ? ' today-marker' : '') + (isSelectedCell ? ' selected-day' : '')
-          });
+          const dayEl = mk('div', { cls: 'mini-cal-day ' + shiftCls + (isTodayCell ? ' today-marker' : '') + (isSelectedCell ? ' selected-day' : '') });
           dayEl.title = `${m+1}月${d}日 · ${shift}`;
-          // 点击迷你日历日期 → 跳转月份 + 展示详情面板
           dayEl.style.cursor = 'pointer';
-          dayEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            selectedDate = date;
-            viewMonth = m;
-            render();
-            showDetail(date);
-          });
+          dayEl.addEventListener('click', (e) => { e.stopPropagation(); selectedDate = date; viewMonth = m; render(); showDetail(date); });
           calGrid.appendChild(dayEl);
         }
-
         monthDiv.appendChild(calGrid);
-
-        // Month label
         const label = mk('div', { cls: 'heatmap-month-label', text: `${m+1}月` });
         monthDiv.appendChild(label);
-
-        // Click to navigate
-        monthDiv.addEventListener('click', () => {
-          viewMonth = m;
-          closeDetail();
-          render();
-        });
-
+        monthDiv.addEventListener('click', () => { viewMonth = m; closeDetail(); render(); });
         grid.appendChild(monthDiv);
       }
     }
@@ -2863,7 +2558,7 @@
     function mk(tag, opts) {
       const el = document.createElement(tag);
       if (opts.cls) el.className = opts.cls;
-      if (opts.text) el.textContent = opts.text;
+      if (opts.text !== undefined) el.textContent = opts.text;
       if (opts.onclick) el.onclick = opts.onclick;
       if (opts.html) el.innerHTML = opts.html;
       return el;
@@ -2872,63 +2567,35 @@
     // ===== Detail Panel =====
     function showDetail(date) {
       const s = getShift(date);
-      const cls = { '白班': 'day', '夜班': 'night', '休息': 'rest' }[s] || 'rest';
-      const emoji = { '白班': '☀️', '夜班': '🌙', '休息': '🏖️' }[s] || '❓';
+      const sdef = getShiftDef(s);
       const panel = document.getElementById('detailPanel');
-
-      // 构建日期信息
       let dateInfo = formatDate(date) + ' ' + getWeekdayCn(date);
-
-      // 添加农历信息
       const lunar = getLunarDate(date);
       dateInfo += ` 农历${lunar.yearGanZhi}年[${lunar.zodiac}]${lunar.monthStr}${lunar.dayStr}`;
-
-      // 添加节气信息
       const solarTerm = getSolarTerm(date);
-      if (solarTerm) {
-        const termInfo = SOLAR_TERM_INFO[solarTerm];
-        dateInfo += ` ${termInfo.icon}${solarTerm}`;
-      }
-
-      // 添加节假日信息
+      if (solarTerm) { const ti = SOLAR_TERM_INFO[solarTerm]; dateInfo += ` ${ti.icon}${solarTerm}`; }
       const holiday = getHoliday(date);
-      if (holiday) {
-        dateInfo += ` 🎉${holiday}`;
-      }
-
+      if (holiday) dateInfo += ` 🎉${holiday}`;
       document.getElementById('detailDate').textContent = dateInfo;
       const ds = document.getElementById('detailShift');
-      ds.innerHTML = `${emoji} ${s}`;
-      ds.className = `detail-shift ${cls}`;
+      ds.innerHTML = `${sdef.emoji} ${s}`;
+      ds.className = `detail-shift ${sdef.cssClass}`;
       document.getElementById('detailCycle').textContent = getCycleIndex(date) + 1;
 
-      // 增强详情信息
       const extraEl = document.getElementById('detailExtra');
       extraEl.innerHTML = '';
-
-      // 连续班次天数
       const consecutive = getConsecutiveShiftDays(date);
       extraEl.appendChild(mkDetailItem('连续同班', `${consecutive}天`));
-
-      // 本月累计工时
       const workHrs = calculateWorkHours(date.getFullYear(), date.getMonth());
       extraEl.appendChild(mkDetailItem('本月工时', `${workHrs}h`));
-
-      // 距离周末/休息日
       const daysToRest = getDaysToWeekend(date);
       extraEl.appendChild(mkDetailItem('距休息日', daysToRest === 0 ? '今天' : `${daysToRest}天`));
-
-      // 周期位置
       const cyclePos = getCycleIndex(date) + 1;
       extraEl.appendChild(mkDetailItem('周期位置', `${cyclePos}/${CYCLE.length}`));
 
       panel.classList.add('show');
-      // 在宽屏模式下，详情面板会固定在左侧栏，不需要滚动
-      if (window.innerWidth < 769) {
-        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      if (window.innerWidth < 769) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       selectedDate = date;
-      // 更新日历格子的选中标记
       document.querySelectorAll('.day-cell.selected').forEach(el => el.classList.remove('selected'));
       document.querySelectorAll('.day-cell').forEach(el => {
         const numEl = el.querySelector('.day-num');
@@ -2939,132 +2606,62 @@
           }
         }
       });
-      // 同步更新小日历的选中标记
       renderHeatmap();
     }
 
     function mkDetailItem(label, value) {
       const div = mk('div', { cls: 'detail-extra-item' });
-      const lbl = mk('div', { cls: 'detail-extra-label', text: label });
-      const val = mk('div', { cls: 'detail-extra-value', text: value });
-      div.appendChild(lbl);
-      div.appendChild(val);
+      div.appendChild(mk('div', { cls: 'detail-extra-label', text: label }));
+      div.appendChild(mk('div', { cls: 'detail-extra-value', text: value }));
       return div;
     }
 
     function closeDetail() {
       document.getElementById('detailPanel').classList.remove('show');
-      // 清除选中标记
       document.querySelectorAll('.day-cell.selected').forEach(el => el.classList.remove('selected'));
       selectedDate = null;
     }
 
     // ===== Year-Month Picker =====
     let pickerYear;
-    function openPicker() {
-      pickerYear = viewYear;
-      renderPicker();
-      document.getElementById('pickerModal').classList.add('show');
-    }
-
-    function closePicker() {
-      document.getElementById('pickerModal').classList.remove('show');
-    }
-
+    function openPicker() { pickerYear = viewYear; renderPicker(); document.getElementById('pickerModal').classList.add('show'); }
+    function closePicker() { document.getElementById('pickerModal').classList.remove('show'); }
     function renderPicker() {
       const today = new Date();
-      const minYear = today.getFullYear() - 1;
-      const maxYear = today.getFullYear() + 1;
-
       document.getElementById('pickerYearLabel').textContent = `${pickerYear}年`;
-
       const monthsGrid = document.getElementById('pickerMonths');
       monthsGrid.innerHTML = '';
-
       for (let m = 0; m < 12; m++) {
         const btn = mk('button', { cls: 'picker-month-btn', text: `${m + 1}月` });
-        if (m === viewMonth && pickerYear === viewYear) {
-          btn.classList.add('active');
-        }
-        btn.addEventListener('click', () => {
-          viewYear = pickerYear;
-          viewMonth = m;
-          closePicker();
-          closeDetail();
-          render();
-        });
+        if (m === viewMonth && pickerYear === viewYear) btn.classList.add('active');
+        btn.addEventListener('click', () => { viewYear = pickerYear; viewMonth = m; closePicker(); closeDetail(); render(); });
         monthsGrid.appendChild(btn);
       }
     }
-
-    function pickerPrevYear() {
-      const today = new Date();
-      const minYear = today.getFullYear() - 1;
-      if (pickerYear > minYear) {
-        pickerYear--;
-        renderPicker();
-      }
-    }
-
-    function pickerNextYear() {
-      const today = new Date();
-      const maxYear = today.getFullYear() + 1;
-      if (pickerYear < maxYear) {
-        pickerYear++;
-        renderPicker();
-      }
-    }
+    function pickerPrevYear() { const today = new Date(); if (pickerYear > today.getFullYear() - 1) { pickerYear--; renderPicker(); } }
+    function pickerNextYear() { const today = new Date(); if (pickerYear < today.getFullYear() + 1) { pickerYear++; renderPicker(); } }
 
     // ===== Month Navigation =====
-    function prevMonth() {
-      if (viewMonth === 0) { viewYear--; viewMonth = 11; }
-      else viewMonth--;
-      closeDetail();
-      render();
-    }
-
-    function nextMonth() {
-      if (viewMonth === 11) { viewYear++; viewMonth = 0; }
-      else viewMonth++;
-      closeDetail();
-      render();
-    }
+    function prevMonth() { if (viewMonth === 0) { viewYear--; viewMonth = 11; } else viewMonth--; closeDetail(); render(); }
+    function nextMonth() { if (viewMonth === 11) { viewYear++; viewMonth = 0; } else viewMonth++; closeDetail(); render(); }
 
     // ===== Back to Today =====
     document.getElementById('backToToday').addEventListener('click', () => {
       const today = new Date();
-      viewYear = today.getFullYear();
-      viewMonth = today.getMonth();
-      closeDetail();
-      render();
+      viewYear = today.getFullYear(); viewMonth = today.getMonth();
+      closeDetail(); render();
     });
 
-    // ===== Keyboard Navigation =====
+    // ===== Keyboard =====
     document.addEventListener('keydown', (e) => {
-      // Don't intercept if user is typing in an input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        prevMonth();
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        nextMonth();
-      } else if (e.key === 't' || e.key === 'T') {
-        e.preventDefault();
-        const today = new Date();
-        viewYear = today.getFullYear();
-        viewMonth = today.getMonth();
-        closeDetail();
-        render();
-      } else if (e.key === 'Escape') {
-        if (document.getElementById('pickerModal').classList.contains('show')) {
-          closePicker();
-        } else if (document.getElementById('settingsModal').classList.contains('show')) {
-          closeSettings();
-        } else if (document.getElementById('detailPanel').classList.contains('show')) {
-          closeDetail();
-        }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); prevMonth(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); nextMonth(); }
+      else if (e.key === 't' || e.key === 'T') { e.preventDefault(); const today = new Date(); viewYear = today.getFullYear(); viewMonth = today.getMonth(); closeDetail(); render(); }
+      else if (e.key === 'Escape') {
+        if (document.getElementById('pickerModal').classList.contains('show')) closePicker();
+        else if (document.getElementById('settingsModal').classList.contains('show')) closeSettings();
+        else if (document.getElementById('detailPanel').classList.contains('show')) closeDetail();
       }
     });
 
@@ -3073,60 +2670,140 @@
       document.getElementById('settingsModal').classList.add('show');
       document.getElementById('anchorDate').value = formatDateISO(ANCHOR_DATE);
       document.getElementById('cyclePattern').value = CYCLE.join(' ');
+      renderShiftDefsEditor();
     }
 
-    function closeSettings() {
-      document.getElementById('settingsModal').classList.remove('show');
+    function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
+
+    // 渲染班次定义编辑器
+    function renderShiftDefsEditor() {
+      const container = document.getElementById('shiftDefsEditor');
+      container.innerHTML = '';
+      // 获取周期中的班次 + 已定义的班次
+      const allShiftNames = new Set([...CYCLE, ...Object.keys(SHIFT_DEFS)]);
+
+      for (const sn of allShiftNames) {
+        const def = SHIFT_DEFS[sn] || getShiftDef(sn);
+        const row = mk('div', { cls: 'shift-def-row' });
+        row.innerHTML = `
+          <span class="shift-def-name">${def.emoji} ${sn}</span>
+          <span class="shift-def-label">预设:</span>
+          <select class="shift-def-preset" data-shift="${sn}" style="width:80px;font-size:12px;padding:6px 4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+            ${CSS_PRESETS.map(p => `<option value="${p}" ${def.cssClass === p ? 'selected' : ''}>${PRESET_ICONS[p]} ${p}</option>`).join('')}
+          </select>
+          <span class="shift-def-label">上班:</span>
+          <input type="time" class="shift-def-time" data-shift="${sn}" data-field="startTime" value="${def.startTime || ''}" ${!def.isWork ? 'disabled' : ''}>
+          <span class="shift-def-label">下班:</span>
+          <input type="time" class="shift-def-time" data-shift="${sn}" data-field="endTime" value="${def.endTime || ''}" ${!def.isWork ? 'disabled' : ''}>
+          <label class="shift-def-check">
+            <input type="checkbox" data-shift="${sn}" data-field="isWork" ${def.isWork ? 'checked' : ''} onchange="toggleShiftWork(this)">
+            工作
+          </label>
+          <label class="shift-def-check">
+            <input type="checkbox" data-shift="${sn}" data-field="crossDay" ${def.crossDay ? 'checked' : ''} ${!def.isWork ? 'disabled' : ''}>
+            跨日
+          </label>
+          <button class="btn-sm danger" onclick="removeShiftDef('${sn}')" title="删除此班次定义" style="margin-left:auto;">✕</button>
+        `;
+        container.appendChild(row);
+      }
+    }
+
+    // 切换工作时间输入框启用/禁用
+    function toggleShiftWork(checkbox) {
+      const shiftName = checkbox.dataset.shift;
+      const row = checkbox.closest('.shift-def-row');
+      const timeInputs = row.querySelectorAll('.shift-def-time');
+      const crossCheck = row.querySelector('[data-field="crossDay"]');
+      timeInputs.forEach(ti => ti.disabled = !checkbox.checked);
+      if (crossCheck) crossCheck.disabled = !checkbox.checked;
+    }
+
+    // 添加新班次
+    function addShiftDef() {
+      const name = prompt('请输入新班次名称（如：早班、值班等）:');
+      if (!name || !name.trim()) return;
+      const trimmed = name.trim();
+      if (SHIFT_DEFS[trimmed]) { alert('该班次已存在！'); return; }
+      SHIFT_DEFS[trimmed] = { emoji: '📋', cssClass: 'day', startTime: '09:00', endTime: '17:00', isWork: true };
+      renderShiftDefsEditor();
+    }
+
+    // 删除班次定义
+    function removeShiftDef(shiftName) {
+      if (!confirm(`确定要删除"${shiftName}"的班次定义吗？`)) return;
+      // 同时从周期中移除
+      CYCLE = CYCLE.filter(s => s !== shiftName);
+      delete SHIFT_DEFS[shiftName];
+      document.getElementById('cyclePattern').value = CYCLE.join(' ');
+      renderShiftDefsEditor();
     }
 
     function saveSettings() {
       const anchorVal = document.getElementById('anchorDate').value;
-      const newCycle = document.getElementById('cyclePattern').value.split(/\s+/).filter(s => s.trim() !== '');
+      const cycleRaw = document.getElementById('cyclePattern').value;
+      const newCycle = cycleRaw.split(/\s+/).filter(s => s.trim() !== '');
 
-      if (newCycle.length === 0) {
-        alert('周期模式不能为空！');
-        return;
-      }
-
-      // 校验日期输入
-      if (!anchorVal) {
-        alert('请选择锚定日期！');
-        return;
-      }
+      if (newCycle.length === 0) { alert('周期模式不能为空！'); return; }
+      if (!anchorVal) { alert('请选择锚定日期！'); return; }
       const parts = anchorVal.split('-');
-      if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
-        alert('日期格式无效！');
-        return;
-      }
+      if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) { alert('日期格式无效！'); return; }
       const newAnchor = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      if (isNaN(newAnchor.getTime())) {
-        alert('无效的日期！');
-        return;
+      if (isNaN(newAnchor.getTime())) { alert('无效的日期！'); return; }
+
+      // 从编辑器读取班次定义
+      const editorRows = document.querySelectorAll('.shift-def-row');
+      const newDefs = {};
+      for (const row of editorRows) {
+        const shiftName = row.querySelector('[data-shift]').dataset.shift;
+        const presetEl = row.querySelector('.shift-def-preset');
+        const cssClass = presetEl ? presetEl.value : 'day';
+        const startEl = row.querySelector('[data-field="startTime"]');
+        const endEl = row.querySelector('[data-field="endTime"]');
+        const workEl = row.querySelector('[data-field="isWork"]');
+        const crossEl = row.querySelector('[data-field="crossDay"]');
+
+        const isWork = workEl ? workEl.checked : true;
+        const existingDef = SHIFT_DEFS[shiftName];
+        const emoji = existingDef ? existingDef.emoji : (PRESET_ICONS[cssClass] || '📋');
+
+        newDefs[shiftName] = {
+          emoji: emoji,
+          cssClass: cssClass,
+          startTime: isWork && startEl ? startEl.value : null,
+          endTime: isWork && endEl ? endEl.value : null,
+          isWork: isWork
+        };
+        if (crossEl && crossEl.checked) newDefs[shiftName].crossDay = true;
+      }
+
+      // 确保周期中的每个班次都有定义
+      for (const sn of newCycle) {
+        if (!newDefs[sn]) {
+          newDefs[sn] = { emoji: '📋', cssClass: 'day', startTime: '09:00', endTime: '17:00', isWork: true };
+        }
       }
 
       ANCHOR_DATE = newAnchor;
       CYCLE = newCycle;
+      SHIFT_DEFS = newDefs;
 
       localStorage.setItem('qingzheng-anchor', anchorVal);
       localStorage.setItem('qingzheng-cycle', JSON.stringify(CYCLE));
+      saveShiftDefs();
 
       // 同步到原生存储
       if (typeof Android !== 'undefined') {
-        Android.saveSettings(JSON.stringify(CYCLE), anchorVal);
+        Android.saveSettings(JSON.stringify(CYCLE), anchorVal, JSON.stringify(SHIFT_DEFS));
       }
 
       closeSettings();
       render();
     }
 
-    // ===== 窗口大小变化时重新渲染 =====
+    // ===== Resize handler =====
     let resizeTimer;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        render();
-      }, 250);
-    });
+    window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => render(), 250); });
   </script>
 </body>
 </html>
