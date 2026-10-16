@@ -13,6 +13,18 @@ const DEFAULT_SHIFT_DEFS = {
   '休息': { emoji: '🌿', cssClass: 'rest', startTime: null, endTime: null, isWork: false }
 };
 const DEFAULT_CYCLE = ['白班', '夜班', '休息', '白班', '夜班', '休息', '休息', '休息'];
+const FESTIVAL_ART = Object.freeze({
+  '元旦': {symbol:'new-year',palette:'gold',message:'新的一年，也把日常过得闪闪发光。'},
+  '除夕': {symbol:'eve',palette:'coral',message:'一餐团圆，辞旧迎新。'},
+  '春节': {symbol:'spring',palette:'coral',message:'灯火照新岁，愿诸事顺遂。'},
+  '元宵节': {symbol:'lantern',palette:'coral',message:'花灯映圆月，日子暖而甜。'},
+  '清明': {symbol:'qingming',palette:'jade',message:'风起清明，寄一份思念，赴一场春光。'},
+  '劳动节': {symbol:'labor',palette:'blue',message:'每一份认真，都值得被看见。'},
+  '端午节': {symbol:'dragon-boat',palette:'jade',message:'粽叶飘香，愿你端午安康。'},
+  '中秋节': {symbol:'moon',palette:'gold',message:'月满人团圆，所念皆安好。'},
+  '国庆节': {symbol:'national',palette:'coral',message:'山河锦绣，日常也有好风景。'},
+  '重阳节': {symbol:'chrysanthemum',palette:'gold',message:'菊香秋意长，愿岁岁安康。'}
+});
 let storageFailed = false;
 let recoveredData = false;
 let toastTimer;
@@ -73,6 +85,7 @@ let lastDayKey = '';
 let lastTodayShiftKey = '';
 let lastRenderedMonth = null;
 let automaticTheme = false;
+let lastTodayFestival = null;
 const runningAnimations = new Set();
 const elementAnimations = new WeakMap();
 const motionPreference = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
@@ -122,6 +135,32 @@ function getSolarTerm(date) {
   return index >= 0 ? CalendarData.terms[index] : null;
 }
 function getHoliday(date) { return Core.festival(date, getSolarTerm(date)); }
+function festivalParts(festival) {
+  return (festival || '').split('·').filter(name => Core.own(FESTIVAL_ART,name));
+}
+function makeFestivalArt(festival) {
+  const ornament = mk('span',{cls:'festival-art'});
+  ornament.setAttribute('aria-hidden','true');
+  for (const name of festivalParts(festival)) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    const use = document.createElementNS('http://www.w3.org/2000/svg','use');
+    svg.setAttribute('viewBox','0 0 80 80');
+    svg.setAttribute('focusable','false');
+    use.setAttribute('href',`#festival-${FESTIVAL_ART[name].symbol}`);
+    svg.append(use); ornament.append(svg);
+  }
+  return ornament;
+}
+function renderFestivalNotice(container, festival) {
+  const parts = festivalParts(festival);
+  container.hidden = !parts.length;
+  container.replaceChildren();
+  if (!parts.length) { delete container.dataset.festivalPalette; return; }
+  container.dataset.festivalPalette = FESTIVAL_ART[parts[0]].palette;
+  const copy = mk('div',{cls:'festival-copy'});
+  copy.append(mk('strong',{text:festival}),mk('p',{text:parts.map(name => FESTIVAL_ART[name].message).join(' ')}));
+  container.append(makeFestivalArt(festival),copy);
+}
 function shiftTimeText(name) {
   const def = getShiftDef(name);
   return def.isWork ? `${def.startTime} — ${isCrossDayShift(name) ? '次日 ' : ''}${def.endTime}` : '不赶时间，好好休息';
@@ -196,6 +235,12 @@ function updateTodayCardDisplay(info, now = new Date()) {
   }
   const lunar = getLunarDate(now);
   $('todayDate').textContent = `${now.getMonth() + 1}月${now.getDate()}日 ${getWeekdayCn(now)}${lunar.day ? ` · 农历${lunar.monthStr}${lunar.dayStr}` : ''}`;
+  const festival = getHoliday(now);
+  if (festival !== lastTodayFestival) {
+    renderFestivalNotice($('todayFestival'),festival);
+    document.querySelector('.today-card').classList.toggle('has-festival',!!festival);
+    lastTodayFestival = festival;
+  }
   $('todayShiftTime').textContent = `${info.isCrossDay ? '昨日班次 · ' : ''}${shiftTimeText(info.shift)}`;
   const position = getCycleIndex(info.date) + 1;
   $('todayCycle').textContent = position;
@@ -287,10 +332,20 @@ function renderCalendar() {
     cell.setAttribute('aria-label', `${formatDate(date)} ${getWeekdayCn(date)} ${name} ${shiftTimeText(name)}${lunar.day ? ` 农历${lunar.monthStr}${lunar.dayStr}` : ''}${term ? ` ${term}` : ''}${festival ? ` ${festival}` : ''}`);
     cell.setAttribute('aria-pressed', String(!!selected));
     if (today) cell.setAttribute('aria-current','date');
-    if (festival) cell.append(mk('span',{cls:'holiday-badge',text:festival}));
+    const heading = mk('span',{cls:'day-heading'});
+    heading.append(mk('span',{cls:'day-num',text:d}));
+    if (festival) {
+      cell.classList.add('is-festival');
+      cell.dataset.festival = festival;
+      const parts = festivalParts(festival);
+      cell.classList.toggle('festival-combined',parts.length > 1);
+      if (parts.length) cell.dataset.festivalPalette = FESTIVAL_ART[parts[0]].palette;
+      heading.append(makeFestivalArt(festival));
+    }
     const label = mk('span', {cls:'day-shift'});
     label.append(mk('span',{cls:`shift-dot ${def.cssClass}`}),mk('span',{cls:'day-shift-label',text:name}));
-    cell.append(mk('span',{cls:'day-num',text:d}),label,mk('span',{cls:`lunar-date${term ? ' solar-term' : ''}`,text:term || (lunar.day === 1 ? lunar.monthStr : lunar.dayStr)}));
+    cell.append(heading,label,mk('span',{cls:`lunar-date${term ? ' solar-term' : ''}`,text:term || (lunar.day === 1 ? lunar.monthStr : lunar.dayStr)}));
+    if (festival) cell.append(mk('span',{cls:'holiday-badge',text:festival}));
     fragment.append(cell);
   }
   $('daysGrid').replaceChildren(fragment);
@@ -370,6 +425,7 @@ function render() {
 function renderDetail(date) {
   const name = getShift(date), def = getShiftDef(name), lunar = getLunarDate(date);
   const festival = getHoliday(date), term = getSolarTerm(date);
+  renderFestivalNotice($('detailFestival'),festival);
   $('detailHeading').textContent = `${date.getMonth()+1}月${date.getDate()}日 · ${getWeekdayCn(date)}`;
   $('detailDate').textContent = `${formatDate(date)} ${getWeekdayCn(date)}${lunar.day ? ` · 农历${lunar.yearGanZhi}年 [${lunar.zodiac}] ${lunar.monthStr}${lunar.dayStr}` : ''}${festival ? ` · ${festival}` : ''}${term && term !== festival ? ` · ${term}` : ''}`;
   $('detailShift').textContent = `${def.emoji} ${name}`;
