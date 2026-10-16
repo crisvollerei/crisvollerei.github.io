@@ -1,56 +1,123 @@
-<!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
-<head>
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="清蒸排班表：轻松查看轮班日历、自定义班次和周期。所有排班配置保存在当前设备。">
-  <meta name="theme-color" content="#f6f5f8">
-  <title>清蒸排班 · 把生活安排好</title>
+  <meta name="description" content="清蒸排班表：工作有节奏，生活有期待。你的个人轮班日历、班次计划和休息提醒。">
+  <meta name="theme-color" content="#f0f0f7">
+  <title>清蒸排班 · 把日子排成喜欢的样子</title>
+  <script>
+    // Apply the saved or time-based theme before the first paint.
+    (() => {
+      const hour = new Date().getHours();
+      const timedTheme = hour >= 7 && hour < 19 ? 'light' : 'dark';
+      try {
+        const theme = localStorage.getItem('qingzheng-theme');
+        const mode = localStorage.getItem('qingzheng-theme-mode');
+        document.documentElement.dataset.theme = mode === 'auto' || !['light','dark'].includes(theme) ? timedTheme : theme;
+      } catch (_) { document.documentElement.dataset.theme = timedTheme; }
+    })();
+  </script>
   <link rel="icon" href="avatar.png">
-  <link rel="stylesheet" href="assets/styles.css">
-  <script src="assets/schedule-core.js" defer></script>
-  <script src="assets/calendar-data.js" defer></script>
-  <script src="assets/app.js" defer></script>
+  <link rel="stylesheet" href="assets/styles.css"><link rel="stylesheet" href="assets/themes.css">
+  <script src="assets/schedule-core.js" defer=""></script>
+  <script src="assets/calendar-data.js" defer=""></script>
+  <script src="assets/app.js" defer=""></script>
 </head>
-<body>
+<body><div class="world-ornaments" aria-hidden="true"><svg class="world-wing ornament-day" viewBox="0 0 300 120" focusable="false"><use href="#silver-wings"></use></svg><svg class="world-tide ornament-night" viewBox="0 0 640 100" preserveAspectRatio="none" focusable="false"><use href="#night-tide"></use></svg><svg class="world-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><svg class="theme-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="silver-knot" viewBox="0 0 64 64">
+      <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M32 21C11-2 1 22 23 32C1 44 15 64 32 43C49 64 64 44 42 32C64 20 52-1 32 21Z"></path>
+        <path d="M32 27C18 8 9 22 28 32C9 42 20 55 32 37C44 55 56 42 37 32C56 22 45 8 32 27Z"></path>
+        <path d="m32 22 10 10-10 10-10-10Z"></path><path d="m32 27 5 5-5 5-5-5Z"></path>
+        <path d="M32 3V0m0 64v-3M3 32H0m64 0h-3"></path>
+      </g>
+    </symbol>
+    <symbol id="silver-wings" viewBox="0 0 300 120">
+      <g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M143 81C108 53 80 25 20 5C35 39 26 69 3 104C31 78 54 72 69 111C82 78 105 75 123 105L143 81Z"></path>
+        <path d="M143 81L20 5m123 76L39 48m104 33L69 111m74-30-20 24M157 81C192 53 220 25 280 5C265 39 274 69 297 104C269 78 246 72 231 111C218 78 195 75 177 105L157 81Z"></path>
+        <path d="m157 81 123-76M157 81l104-33M157 81l74 30m-74-30 20 24m-27-40 13 16-13 16-13-16Z"></path>
+        <path d="M150 97v12m-4 0 4 7 4-7-4-6Z"></path>
+      </g>
+    </symbol>
+    <symbol id="silver-pendant" viewBox="0 0 40 64">
+      <g fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="20" cy="8" r="4"></circle><path d="M20 12v15m0 0 11 16-11 16L9 43Z"></path><path d="m20 33 6 10-6 10-6-10Z"></path></g>
+    </symbol>
+    <symbol id="night-bow" viewBox="0 0 100 64">
+      <g fill="currentColor" fill-opacity=".08" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M44 23C29 5 7 5 6 20C4 39 24 42 44 31ZM56 23C71 5 93 5 94 20C96 39 76 42 56 31Z"></path>
+        <path d="m44 31-21 24 13-2 6 9 8-27m6-4 21 24-13-2-6 9-8-27"></path>
+        <path d="M44 23q6-5 12 0v11q-6 4-12 0Z"></path>
+        <path d="M13 21c9-2 18 0 28 6m46-6c-9-2-18 0-28 6M33 48l10-12m24 12L57 36" fill="none"></path>
+      </g>
+    </symbol>
+    <symbol id="night-tail" viewBox="0 0 64 64">
+      <path d="M32 40C29 22 17 11 3 13C3 28 15 40 29 42C27 50 25 54 22 59C31 55 35 51 36 43C50 42 61 28 61 13C47 11 35 23 32 40Z" fill="currentColor" fill-opacity=".13" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path>
+      <path d="M8 18q14 10 22 23m26-23Q42 30 35 42" fill="none" stroke="currentColor" stroke-width=".8"></path>
+    </symbol>
+    <symbol id="night-tide" viewBox="0 0 640 100">
+      <g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+        <path d="M-20 54C72 2 123 95 214 53S356 7 442 51S560 95 660 39M-20 70C72 18 123 111 214 69S356 23 442 67S560 111 660 55M-20 86C72 34 123 127 214 85S356 39 442 83S560 127 660 71"></path>
+        <path d="M-20 41C68-4 132 69 212 41S355-2 442 35S560 67 660 26" opacity=".4"></path>
+        <circle cx="104" cy="32" r="3"></circle><circle cx="367" cy="31" r="2"></circle><circle cx="535" cy="56" r="3"></circle>
+      </g>
+    </symbol>
+    <symbol id="night-cameo" viewBox="0 0 80 80">
+      <g fill="none" stroke="currentColor" stroke-width="1.1">
+        <ellipse cx="40" cy="40" rx="23" ry="31"></ellipse><ellipse cx="40" cy="40" rx="27" ry="35" stroke-dasharray="1 4" stroke-linecap="round"></ellipse>
+        <path d="M31 13 40 1l9 12M31 67l9 12 9-12m-36-37-7 10 7 10m54-20 7 10-7 10"></path>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
   <a class="skip-link" href="#calendarSection">跳转到排班日历</a>
   <div class="main-container">
     <header class="topbar">
-      <a class="brand" href="./" aria-label="清蒸排班首页"><span class="avatar"><img src="avatar.png" alt="" width="40" height="40"></span><span>清蒸<span class="brand-light">排班</span><small>让每一天，心中有数</small></span></a>
-      <div class="topbar-right"><span class="local-status"><span></span> 你的专属排班空间</span><button class="icon-btn" id="themeToggle" aria-label="切换为深色主题" title="切换主题"><span id="themeIcon" aria-hidden="true">☾</span></button><button class="icon-btn" onclick="openSettings()" aria-label="打开排班设置" title="排班设置"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg></button></div>
+      <a class="brand" href="./" aria-label="清蒸排班首页"><span class="avatar"><img src="avatar.png" alt="" width="40" height="40"></span><span>清蒸<span class="brand-light">排班</span><small>一份从容的日常</small></span></a>
+      <nav class="view-nav" aria-label="页面区域"><a class="view-link active" href="#calendarSection">我的日历</a><button class="view-link" onclick="openYearOverview()">年度总览 <span aria-hidden="true">↗</span></button></nav>
+      <div class="topbar-right"><div class="header-date"><span id="subtitle"></span><span class="clock-row"><span class="live-dot" aria-hidden="true"></span><time id="liveClock">--:--:--</time><span>此刻，专注当下</span></span></div><div class="theme-controls"><button class="icon-btn theme-auto" id="themeAuto" onclick="enableAutomaticTheme()" aria-label="启用昼夜自动主题" aria-pressed="true" title="跟随昼夜：07:00–19:00 银昼，其余时间蓝夜"><span aria-hidden="true">◷</span></button><button class="icon-btn" id="themeToggle" aria-label="切换为深色主题" title="切换主题"><span id="themeIcon" aria-hidden="true">☾</span></button></div></div>
     </header>
+
     <main>
-      <section class="hero" aria-labelledby="pageTitle"><div><p class="eyebrow"><span></span> 工作有节奏 · 生活有期待</p><h1 id="pageTitle">排好班，<span>也安排好生活。</span></h1><p class="hero-description">下一次出发，或下一场休息，都提前心中有数。</p></div><div class="hero-date"><span id="subtitle"></span><p id="slogan">认真工作的日子，也要好好生活。</p></div></section>
-      <section class="schedule-toolbar" aria-label="排班方案"><div class="preset-area"><span class="toolbar-label">我的方案</span><div class="preset-bar" id="presetBar"></div></div><div class="toolbar-actions"><button class="button button-secondary" onclick="saveAsPreset()"><span aria-hidden="true">＋</span> 保存方案</button><button class="button button-primary" onclick="openSettings()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg> 排班设置</button></div></section>
-      <p class="storage-notice" id="storageNotice" role="status" hidden></p>
-      <div class="content-layout">
-        <aside class="left-column" aria-label="今日班次和月度统计">
-          <section class="today-card" aria-labelledby="todayLabel">
-            <div class="card-heading"><h2 id="todayLabel">今日班次</h2><span class="live-badge"><span></span> LIVE</span></div><div class="today-date" id="todayDate"></div><div class="today-shift" id="todayShift"></div><p class="shift-time" id="todayShiftTime"></p>
-            <div class="today-cycle">当前周期 <span><b id="todayCycle"></b> / <b id="cycleLength"></b> 天</span></div><div class="cycle-progress" role="progressbar" aria-label="排班周期进度" aria-valuemin="0" aria-valuemax="100" id="cycleProgress"><div class="progress-bar" id="progressBar"></div></div>
-            <div class="rest-countdown"><span>下一次休息</span><strong id="restCountdown">—</strong></div><div class="next-shift-info" id="nextShiftContainer"></div>
-            <div class="countdown-container"><div class="countdown-item"><span class="countdown-label">距离上班</span><strong class="countdown-value" id="countdownToWork">--:--:--</strong></div><div class="countdown-item"><span class="countdown-label">距离下班</span><strong class="countdown-value" id="countdownToOff">--:--:--</strong></div></div><div class="clock-row"><span>此刻，专注当下</span><time id="liveClock">--:--:--</time></div>
-          </section>
-          <section class="stats-section" aria-labelledby="statsTitle"><div class="section-heading"><h2 id="statsTitle">本月概览</h2><span id="statsMonth"></span></div><div class="stats-container" id="statsContainer"></div></section>
-          <section class="work-hours-card" aria-label="所选月份计划工时"><div><p class="work-hours-label">计划工时</p><div><strong id="workHours">0</strong><span class="work-hours-unit">小时</span></div><p class="hours-note">按班次开始日计入当月</p></div><div class="ring-chart-wrapper"><div class="ring-chart" id="ringChart" role="img" aria-label="本月工作日占比"><div class="ring-chart-inner" id="ringChartInner">0%</div></div><span class="ring-caption">工作日占比</span></div><div class="ring-legend" id="ringLegend"></div></section>
+      <section class="workspace-intro" aria-labelledby="pageTitle">
+        <div class="intro-copy"><p class="eyebrow"><span class="theme-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><span class="theme-mood" id="themeMood">银昼</span><span class="intro-divider" aria-hidden="true"></span>工作有节奏，生活有期待</p><h1 id="pageTitle">把日子，<br><span>排成喜欢的样子。</span></h1><p class="intro-subtitle">每一次出发与休息，都值得温柔以待。</p><div class="intro-flourish" aria-hidden="true"><span></span><span class="flourish-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><span></span></div></div>
+        <div class="intro-art" aria-hidden="true"><div class="scene-signature"><span class="scene-day"><strong>银翼手札</strong><small>THE SILVER ATELIER</small></span><span class="scene-night"><strong>深蓝夜航</strong><small>A TIDAL NOCTURNE</small></span></div><span class="scene-orbit"></span><span class="scene-particle particle-one"></span><span class="scene-particle particle-two"></span><span class="scene-particle particle-three"></span><span class="art-halo"></span><svg class="hero-wing ornament-day" viewBox="0 0 300 120" focusable="false"><use href="#silver-wings"></use></svg><svg class="hero-cameo ornament-night" viewBox="0 0 80 80" focusable="false"><use href="#night-cameo"></use></svg><svg class="hero-tide ornament-night" viewBox="0 0 640 100" preserveAspectRatio="none" focusable="false"><use href="#night-tide"></use></svg><span class="art-spark art-spark-one">✧</span><span class="art-spark art-spark-two">✦</span><img class="character character-day" src="assets/character-day.webp" alt="" width="503" height="900" decoding="async"><img class="character character-night" src="assets/character-night.webp" alt="" width="506" height="900" decoding="async"><span class="art-caption">日常 · 也有一点魔法</span></div>
+        <div class="schedule-toolbar" aria-label="排班方案"><div class="preset-area"><span class="toolbar-label">当前方案</span><div class="preset-bar" id="presetBar"></div></div><div class="toolbar-actions"><button class="button button-secondary" onclick="saveAsPreset()" title="保存当前排班方案"><span aria-hidden="true">＋</span> 保存方案</button><button class="button button-primary" onclick="openSettings()" aria-label="打开排班设置"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="8" cy="6" r="2"></circle><circle cx="16" cy="12" r="2"></circle><circle cx="10" cy="18" r="2"></circle></svg> 编辑排班</button></div></div>
+      </section>
+      <p class="storage-notice" id="storageNotice" role="status" hidden=""></p>
+
+      <section class="today-card enter-stage" aria-label="今日班次概览">
+        <div class="today-identity"><div class="card-heading"><span class="briefing-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><h2 id="todayLabel">今天的节奏</h2><span class="today-date" id="todayDate"></span></div><div class="today-shift" id="todayShift"></div><p class="shift-time" id="todayShiftTime"></p></div>
+        <div class="today-cycle-block"><div class="today-cycle">周期进度 <span><b id="todayCycle"></b><span class="cycle-divider"> / </span><b id="cycleLength"></b> 天</span></div><div class="cycle-progress" role="progressbar" aria-label="排班周期进度" aria-valuemin="0" aria-valuemax="100" id="cycleProgress"><div class="progress-bar" id="progressBar"><span class="progress-charm" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></span></div></div><div class="rest-countdown"><span>下一次休息</span><strong id="restCountdown">—</strong></div></div>
+        <div class="next-shifts-block"><p class="section-label">接下来的工作</p><div class="next-shift-info" id="nextShiftContainer"></div></div>
+        <div class="countdown-block"><div class="countdown-container"><div class="countdown-item"><span class="countdown-label">距离上班</span><strong class="countdown-value" id="countdownToWork">--:--:--</strong></div><div class="countdown-item"><span class="countdown-label">距离下班</span><strong class="countdown-value" id="countdownToOff">--:--:--</strong></div></div></div>
+      </section>
+
+      <div class="workspace-grid">
+        <section class="calendar-section panel enter-stage" id="calendarSection" aria-label="月度排班日历"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div>
+          <div class="calendar-heading"><div><p class="eyebrow calendar-eyebrow">月度安排 <span class="heading-rule"></span></p><div class="month-navigation"><button class="month-title" id="monthTitle" onclick="openPicker()" aria-haspopup="dialog" title="选择年月"></button><div class="month-arrows"><button class="nav-btn" id="prevBtn" onclick="prevMonth()" aria-label="上个月">‹</button><button class="nav-btn" id="nextBtn" onclick="nextMonth()" aria-label="下个月">›</button></div></div></div><div class="calendar-actions"><span class="month-meta" id="monthMeta"></span><button class="button today-button" id="backToToday" title="回到今天 · T"><span class="today-button-dot" aria-hidden="true"></span> 今天</button></div></div>
+          <div class="calendar-subhead"><div class="legend" id="legendContainer" aria-label="班次图例"></div><span class="calendar-tip">留一点时间，给自己。</span></div>
+          <div class="calendar"><div class="weekdays" aria-hidden="true"><div>周一 <span>MON</span></div><div>周二 <span>TUE</span></div><div>周三 <span>WED</span></div><div>周四 <span>THU</span></div><div>周五 <span>FRI</span></div><div class="weekend">周六 <span>SAT</span></div><div class="weekend">周日 <span>SUN</span></div></div><div class="days-grid" id="daysGrid"></div></div>
+          <div class="calendar-footnote"><span><span class="today-key"></span> 今天 <span class="selection-key"></span> 已选日期</span><span class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> 切月 <kbd>T</kbd> 今天 <kbd>Esc</kbd> 关闭</span><span>点击日期查看安排 <span aria-hidden="true">↗</span></span></div>
+        </section>
+
+        <aside class="sidebar" aria-label="月度统计和近期安排">
+          <section class="stats-section panel enter-stage" aria-labelledby="statsTitle"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><div class="section-heading"><h2 id="statsTitle">本月概览</h2><span id="statsMonth"></span></div><div class="stats-container" id="statsContainer"></div><div class="work-hours-card" aria-label="所选月份计划工时"><div><p class="work-hours-label">本月计划工时</p><div><strong id="workHours">0</strong><span class="work-hours-unit">小时</span></div><p class="hours-note">按班次开始日计入当月</p></div><div class="ring-chart-wrapper"><div class="ring-chart" id="ringChart" role="img" aria-label="本月工作日占比"><div class="ring-chart-inner" id="ringChartInner">0%</div></div><span class="ring-caption">工作日占比</span></div><div class="ring-legend" id="ringLegend"></div></div></section>
+          <section class="upcoming-panel panel enter-stage" id="upcomingPanel" aria-labelledby="upcomingTitle"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><div class="section-heading"><div><p class="eyebrow">不用等到明天才知道</p><h2 id="upcomingTitle">未来七天</h2></div><span class="week-range" id="weekRange"></span></div><div class="upcoming-list" id="upcomingList"></div><p class="agenda-footnote"><span class="live-dot" aria-hidden="true"></span> 每一天，都提前心中有数</p></section>
+          <section class="detail-panel panel" id="detailPanel" aria-label="选中日期详情"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><div class="detail-header"><div><p class="eyebrow">这一天的安排</p><h2 id="detailHeading"></h2></div><button class="icon-btn" onclick="closeDetail()" aria-label="关闭日期详情">×</button></div><div class="detail-summary"><strong class="detail-shift" id="detailShift"></strong><span id="detailTime"></span></div><p class="detail-date" id="detailDate"></p><div class="detail-cycle">周期第 <b id="detailCycle"></b> 天</div><div class="detail-extra" id="detailExtra"></div><button class="button button-secondary detail-back" onclick="closeDetail()">← 返回未来七天</button></section>
         </aside>
-        <div class="right-column">
-          <section class="calendar-section" id="calendarSection" aria-label="月度排班日历">
-            <div class="calendar-heading"><div class="calendar-heading-title"><span class="calendar-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" class="icon"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-12 4h2m3 0h2m-7 3h2"/></svg></span><div><h2>排班日历</h2><p>工作与休息，一目了然</p></div></div><button class="button today-button" id="backToToday" title="回到今天 · T">今天</button></div>
-            <div class="month-nav"><div class="month-navigation"><button class="nav-btn" id="prevBtn" onclick="prevMonth()" aria-label="上个月">‹</button><button class="month-title" id="monthTitle" onclick="openPicker()" aria-haspopup="dialog" title="选择年月"></button><button class="nav-btn" id="nextBtn" onclick="nextMonth()" aria-label="下个月">›</button></div><span class="month-meta" id="monthMeta"></span></div>
-            <div class="legend" id="legendContainer" aria-label="班次图例"></div><div class="calendar"><div class="weekdays" aria-hidden="true"><div>周一</div><div>周二</div><div>周三</div><div>周四</div><div>周五</div><div class="weekend">周六</div><div class="weekend">周日</div></div><div class="days-grid" id="daysGrid"></div></div>
-            <div class="calendar-footnote"><span><span class="today-key"></span> 今天 <span class="selection-key"></span> 已选日期</span><span>点击日期，查看班次详情 <span aria-hidden="true">↗</span></span></div>
-          </section>
-          <section class="detail-panel" id="detailPanel" aria-label="选中日期详情"><div class="detail-header"><div><p class="eyebrow">这一天的安排</p><h2 id="detailDate"></h2></div><button class="icon-btn" onclick="closeDetail()" aria-label="关闭日期详情">×</button></div><div class="detail-summary"><strong class="detail-shift" id="detailShift"></strong><span id="detailTime"></span><span class="detail-cycle">周期第 <b id="detailCycle"></b> 天</span></div><div class="detail-extra" id="detailExtra"></div></section>
-          <div class="kbd-hint"><span><kbd>←</kbd> <kbd>→</kbd> 切换月份</span><span><kbd>T</kbd> 回到今天</span><span><kbd>Esc</kbd> 关闭面板</span></div>
-        </div>
       </div>
-      <section class="heatmap-container" aria-labelledby="heatmapTitle"><div class="section-heading"><div><p class="eyebrow">把时间看得更远一点</p><h2 id="heatmapTitle">年度排班总览</h2></div><span class="heatmap-hint">点击月份快速跳转</span></div><div class="heatmap-grid" id="heatmapGrid"></div></section>
+
+      <details class="year-overview panel enter-stage" id="yearOverview"><summary><div class="year-overview-heading"><span class="year-icon" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><div><h2 id="heatmapTitle">年度排班总览</h2><p>把时间看得更远一点</p></div></div><span class="year-overview-action"><span class="expand-label">展开 12 个月</span><span class="collapse-label">收起总览</span><span class="disclosure-chevron" aria-hidden="true">⌄</span></span></summary><div class="year-content"><p class="year-explanation">一年的忙碌与闲暇，浓缩在这里。点击月份或日期，回到月历查看。</p><div class="heatmap-grid" id="heatmapGrid"></div></div></details>
     </main>
-    <footer class="footer"><div><span class="footer-brand">清蒸排班</span><span>有序工作，自在生活。</span></div><p id="footerHint">配置仅保存在当前设备</p><p class="calendar-data-note">节日仅作日期参考，不代表法定放假或调休安排。节气资料：<a href="https://www.hko.gov.hk/sc/gts/time/conversion.htm" target="_blank" rel="noopener noreferrer">香港天文台</a>（2025–2030）。</p></footer>
+
+    <footer class="footer"><div><span class="footer-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><span class="footer-brand">清蒸排班</span><span id="slogan">有序工作，自在生活。</span></div><p id="footerHint">配置仅保存在当前设备</p><p class="calendar-data-note">节日仅作日期参考，不代表法定放假或调休安排。历法资料：<a href="https://www.hko.gov.hk/sc/gts/time/conversion.htm" target="_blank" rel="noopener noreferrer">香港天文台</a>（2025–2030）。</p></footer>
   </div>
-  <div class="picker-overlay" id="pickerModal" hidden><section class="picker-content" role="dialog" aria-modal="true" aria-labelledby="pickerTitle" tabindex="-1"><h2 id="pickerTitle">选择年月</h2><div class="picker-year-row"><button class="icon-btn" id="pickerPrev" onclick="pickerPrevYear()" aria-label="上一年">‹</button><strong id="pickerYearLabel"></strong><button class="icon-btn" id="pickerNext" onclick="pickerNextYear()" aria-label="下一年">›</button></div><div class="picker-months" id="pickerMonths"></div><button class="button button-secondary picker-close" onclick="closePicker()">关闭</button></section></div>
-  <div class="modal" id="settingsModal" hidden><section class="modal-content" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1"><div class="modal-header"><div><p class="eyebrow">每个人，都有自己的节奏</p><h2 id="settingsTitle">排班设置</h2></div><button class="icon-btn" onclick="closeSettings()" aria-label="关闭排班设置">×</button></div><p class="form-description">设置一个起始日期和重复周期，其余交给日历。</p><div class="form-group"><label for="anchorDate">周期起始日期</label><input type="date" id="anchorDate" min="1900-01-01" max="2100-12-31"><small>这一天对应周期中的第一个班次。</small></div><div class="form-group"><label for="cyclePattern">周期顺序</label><textarea id="cyclePattern" rows="3" placeholder="白班 夜班 休息 白班 夜班 休息 休息 休息" aria-describedby="cycleHint"></textarea><small id="cycleHint">用空格分隔班次名称，周期会按顺序循环。每个名称最多 40 个字符。</small></div><div class="settings-section-heading"><h3>班次与时间</h3><button class="button button-secondary button-small" onclick="addShiftDef()">＋ 添加班次</button></div><div id="shiftDefsEditor"></div><p class="form-note">下班时间早于或等于上班时间时，自动视为次日下班；也可手动勾选跨日。</p><p class="form-error" id="settingsError" role="alert" hidden></p><div class="btn-group"><button class="button button-secondary" onclick="closeSettings()">取消</button><button class="button button-primary" onclick="saveSettings()">保存设置</button></div></section></div>
-  <div class="toast" id="toast" role="status" hidden></div><noscript><p class="noscript">请启用 JavaScript 以使用排班日历。</p></noscript>
-</body>
-</html>
+
+  <div class="picker-overlay" id="pickerModal" hidden=""><section class="picker-content" role="dialog" aria-modal="true" aria-labelledby="pickerTitle" tabindex="-1"><h2 id="pickerTitle">选择年月</h2><div class="picker-year-row"><button class="icon-btn" id="pickerPrev" onclick="pickerPrevYear()" aria-label="上一年">‹</button><strong id="pickerYearLabel"></strong><button class="icon-btn" id="pickerNext" onclick="pickerNextYear()" aria-label="下一年">›</button></div><div class="picker-months" id="pickerMonths"></div><button class="button button-secondary picker-close" onclick="closePicker()">关闭</button></section></div>
+  <div class="modal" id="settingsModal" hidden=""><section class="modal-content" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1"><div class="modal-header"><div><p class="eyebrow">每个人，都有自己的节奏</p><h2 id="settingsTitle">排班设置</h2></div><button class="icon-btn" onclick="closeSettings()" aria-label="关闭排班设置">×</button></div><p class="form-description">设置一个起始日期和重复周期，其余交给日历。</p><div class="form-group"><label for="anchorDate">周期起始日期</label><input type="date" id="anchorDate" min="1900-01-01" max="2100-12-31"><small>这一天对应周期中的第一个班次。</small></div><div class="form-group"><label for="cyclePattern">周期顺序</label><textarea id="cyclePattern" rows="3" placeholder="白班 夜班 休息 白班 夜班 休息 休息 休息" aria-describedby="cycleHint"></textarea><small id="cycleHint">用空格分隔班次名称，周期会按顺序循环。每个名称最多 40 个字符。</small></div><div class="settings-section-heading"><h3>班次与时间</h3><button class="button button-secondary button-small" onclick="addShiftDef()">＋ 添加班次</button></div><div id="shiftDefsEditor"></div><p class="form-note">下班时间早于或等于上班时间时，自动视为次日下班；也可手动勾选跨日。</p><p class="form-error" id="settingsError" role="alert" hidden=""></p><div class="btn-group"><button class="button button-secondary" onclick="closeSettings()">取消</button><button class="button button-primary" onclick="saveSettings()">保存设置</button></div></section></div>
+  <div class="toast" id="toast" role="status" hidden=""></div><noscript><p class="noscript">请启用 JavaScript 以使用排班日历。</p></noscript>
+
+
+</body></html>

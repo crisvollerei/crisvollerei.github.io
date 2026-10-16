@@ -70,6 +70,28 @@ let pickerYear;
 let activeDialog = null;
 let dialogTrigger = null;
 let lastDayKey = '';
+let lastTodayShiftKey = '';
+let lastRenderedMonth = null;
+let automaticTheme = false;
+const runningAnimations = new Set();
+const elementAnimations = new WeakMap();
+const motionPreference = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+
+function motionAllowed() { return !!motionPreference && !motionPreference.matches; }
+function animateElement(element, frames, options = {}) {
+  if (!element || typeof element.animate !== 'function' || !motionAllowed()) return;
+  elementAnimations.get(element)?.cancel();
+  const animation = element.animate(frames,{duration:260,easing:'cubic-bezier(.16,1,.3,1)',...options});
+  elementAnimations.set(element,animation);
+  runningAnimations.add(animation);
+  animation.finished.catch(() => {}).finally(() => runningAnimations.delete(animation));
+}
+motionPreference?.addEventListener?.('change',event => {
+  if (event.matches) for (const animation of runningAnimations) animation.cancel();
+});
+function reveal(element) {
+  animateElement(element,[{opacity:0,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],{duration:330});
+}
 
 function mk(tag, options = {}) {
   const element = document.createElement(tag);
@@ -165,8 +187,13 @@ function getConsecutiveShiftDays(date) {
 // Keep the effective shift, its anchor day and the progress bar consistent at midnight.
 function updateTodayCardDisplay(info, now = new Date()) {
   const def = getShiftDef(info.shift);
-  $('todayShift').replaceChildren(mk('span', { cls:'today-shift-emoji', text:def.emoji }), document.createTextNode(info.shift));
-  $('todayShift').className = `today-shift ${def.cssClass}`;
+  const shiftKey = JSON.stringify([info.shift,def.emoji,def.cssClass]);
+  if (lastTodayShiftKey !== shiftKey) {
+    $('todayShift').replaceChildren(mk('span', { cls:'today-shift-emoji', text:def.emoji }), document.createTextNode(info.shift));
+    $('todayShift').className = `today-shift ${def.cssClass}`;
+    lastTodayShiftKey = shiftKey;
+    reveal($('todayShift'));
+  }
   const lunar = getLunarDate(now);
   $('todayDate').textContent = `${now.getMonth() + 1}月${now.getDate()}日 ${getWeekdayCn(now)}${lunar.day ? ` · 农历${lunar.monthStr}${lunar.dayStr}` : ''}`;
   $('todayShiftTime').textContent = `${info.isCrossDay ? '昨日班次 · ' : ''}${shiftTimeText(info.shift)}`;
@@ -182,6 +209,10 @@ function updateTodayCardDisplay(info, now = new Date()) {
 }
 function updateLiveClockAndCountdown() {
   const now = new Date();
+  if (automaticTheme) {
+    const theme = themeForTime(now);
+    if (document.documentElement.dataset.theme !== theme) setTheme(theme,false);
+  }
   const dayKey = formatDateISO(now);
   if (lastDayKey && lastDayKey !== dayKey) {
     lastDayKey = dayKey;
@@ -244,6 +275,8 @@ function renderCalendar() {
   $('nextBtn').disabled = viewYear === maxYear() && viewMonth === 11;
   const fragment = document.createDocumentFragment();
   const firstDow = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(viewYear,viewMonth + 1,0).getDate();
+  $('daysGrid').style.setProperty('--week-rows',Math.ceil((firstDow + daysInMonth) / 7));
   for (let i = 0; i < firstDow; i++) { const empty = mk('div',{cls:'day-cell empty'}); empty.setAttribute('aria-hidden','true'); fragment.append(empty); }
   for (let d = 1; d <= new Date(viewYear, viewMonth + 1, 0).getDate(); d++) {
     const date = new Date(viewYear, viewMonth, d), name = getShift(date), def = getShiftDef(name);
@@ -261,6 +294,13 @@ function renderCalendar() {
     fragment.append(cell);
   }
   $('daysGrid').replaceChildren(fragment);
+  const monthKey = viewYear * 12 + viewMonth;
+  if (lastRenderedMonth !== null && lastRenderedMonth !== monthKey) {
+    const direction = monthKey > lastRenderedMonth ? 1 : -1;
+    animateElement($('daysGrid'),[{opacity:.15,transform:`translateX(${direction * 14}px)`},{opacity:1,transform:'translateX(0)'}]);
+    animateElement($('statsContainer'),[{opacity:.3,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}]);
+  }
+  lastRenderedMonth = monthKey;
 }
 function renderHeatmap() {
   $('heatmapTitle').textContent = `${viewYear} 年度排班总览`;
@@ -270,6 +310,7 @@ function renderHeatmap() {
       const day = event.target.closest('[data-date]')?.dataset.date;
       navigateMonth(viewYear,m);
       if (day) showDetail(Core.parseDate(day));
+      if (!day || window.innerWidth > 640) $('calendarSection').scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'start'});
     }});
     month.setAttribute('aria-label',`查看${viewYear}年${m + 1}月排班`);
     month.setAttribute('aria-pressed',String(m === viewMonth));
@@ -297,17 +338,39 @@ function renderNextShifts() {
   }));
   $('nextShiftContainer').hidden = getWorkShifts().length === 0;
 }
+function renderUpcoming() {
+  const today = new Date();
+  const last = addDays(today,6);
+  $('weekRange').textContent = `${today.getMonth()+1}.${String(today.getDate()).padStart(2,'0')} — ${last.getMonth()+1}.${String(last.getDate()).padStart(2,'0')}`;
+  $('upcomingList').replaceChildren(...Array.from({length:7},(_,index) => {
+    const date = addDays(today,index), name = getShift(date), def = getShiftDef(name);
+    const row = mk('button',{cls:`upcoming-day${index === 0 ? ' is-today' : ''}`,onclick:() => {
+      navigateMonth(date.getFullYear(),date.getMonth());
+      showDetail(date);
+    }});
+    row.dataset.date = formatDateISO(date);
+    row.setAttribute('aria-label',`${formatDate(date)} ${name} 查看详情`);
+    const dateLabel = mk('span',{cls:'upcoming-date'});
+    dateLabel.append(mk('strong',{text:`${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`}),mk('small',{text:index === 0 ? '今天' : index === 1 ? '明天' : getWeekdayCn(date)}));
+    const shift = mk('span',{cls:`upcoming-shift ${def.cssClass}`});
+    shift.append(mk('span',{cls:`shift-dot ${def.cssClass}`}),mk('span',{text:name}));
+    row.title = shiftTimeText(name);
+    row.append(dateLabel,shift);
+    return row;
+  }));
+}
 function render() {
   const today = new Date();
   viewYear = Math.min(maxYear(),Math.max(minYear(),viewYear));
   $('subtitle').textContent = `${formatDate(today)} · ${getWeekdayCn(today)}`;
   $('footerHint').textContent = `配置仅保存在当前设备 · ${CYCLE.length} 天一循环`;
-  renderStats(); renderLegend(); renderCalendar(); renderHeatmap(); renderNextShifts(); updateLiveClockAndCountdown();
+  renderStats(); renderLegend(); renderCalendar(); renderHeatmap(); renderNextShifts(); renderUpcoming(); updateLiveClockAndCountdown();
   if (selectedDate) renderDetail(selectedDate);
 }
 function renderDetail(date) {
   const name = getShift(date), def = getShiftDef(name), lunar = getLunarDate(date);
   const festival = getHoliday(date), term = getSolarTerm(date);
+  $('detailHeading').textContent = `${date.getMonth()+1}月${date.getDate()}日 · ${getWeekdayCn(date)}`;
   $('detailDate').textContent = `${formatDate(date)} ${getWeekdayCn(date)}${lunar.day ? ` · 农历${lunar.yearGanZhi}年 [${lunar.zodiac}] ${lunar.monthStr}${lunar.dayStr}` : ''}${festival ? ` · ${festival}` : ''}${term && term !== festival ? ` · ${term}` : ''}`;
   $('detailShift').textContent = `${def.emoji} ${name}`;
   $('detailShift').className = `detail-shift ${def.cssClass}`;
@@ -323,8 +386,11 @@ function renderDetail(date) {
 }
 function showDetail(date) {
   selectedDate = date; renderDetail(date);
+  $('upcomingPanel').hidden = true;
   $('detailPanel').classList.add('show');
+  reveal($('detailPanel'));
   updateSelection();
+  if (window.innerWidth <= 640) $('detailPanel').scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'nearest'});
 }
 function updateSelection() {
   for (const cell of $('daysGrid').querySelectorAll('button')) {
@@ -332,7 +398,25 @@ function updateSelection() {
     cell.classList.toggle('selected',selected); cell.setAttribute('aria-pressed',String(selected));
   }
 }
-function closeDetail() { $('detailPanel').classList.remove('show'); selectedDate = null; updateSelection(); }
+function closeDetail() {
+  const wasOpen = $('detailPanel').classList.contains('show');
+  $('detailPanel').classList.remove('show');
+  $('upcomingPanel').hidden = false;
+  selectedDate = null; updateSelection();
+  if (wasOpen) reveal($('upcomingPanel'));
+}
+
+function openYearOverview() {
+  $('yearOverview').open = true;
+  $('yearOverview').scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'start'});
+}
+$('yearOverview').addEventListener('toggle',event => {
+  if (event.currentTarget.open) reveal(event.currentTarget.querySelector('.year-content'));
+});
+document.querySelector('.view-link[href="#calendarSection"]').addEventListener('click',event => {
+  event.preventDefault();
+  $('calendarSection').scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'start'});
+});
 
 // A single navigation boundary applies to buttons, keyboard shortcuts and the picker.
 function minYear() { return Math.max(1900,new Date().getFullYear() - 1); }
@@ -510,6 +594,7 @@ function openDialog(id) {
   const content = $(id).querySelector('[role="dialog"]');
   content.focus({preventScroll:true});
   content.scrollTop = 0;
+  animateElement(content,[{opacity:0,transform:'translateY(10px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:280});
 }
 function closeDialog(id) {
   $(id).hidden = true;
@@ -542,8 +627,21 @@ function setTheme(theme, save = true) {
   document.documentElement.dataset.theme = theme;
   $('themeIcon').textContent = theme === 'light' ? '☾' : '☀';
   $('themeToggle').setAttribute('aria-label',`切换为${theme === 'light' ? '深色' : '浅色'}主题`);
-  document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#f6f5f8' : '#17161e';
-  if (save) storageSet('qingzheng-theme',theme);
+  document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#f0f0f7' : '#101b2d';
+  $('themeMood').textContent = theme === 'light' ? '银昼' : '蓝夜';
+  if (save) {
+    automaticTheme = false;
+    storageSet('qingzheng-theme',theme);
+    storageSet('qingzheng-theme-mode','manual');
+  }
+  $('themeAuto').setAttribute('aria-pressed',String(automaticTheme));
+}
+function themeForTime(date) { return date.getHours() >= 7 && date.getHours() < 19 ? 'light' : 'dark'; }
+function enableAutomaticTheme() {
+  automaticTheme = true;
+  storageSet('qingzheng-theme-mode','auto');
+  setTheme(themeForTime(new Date()),false);
+  toast('已启用昼夜主题，07:00–19:00 为银昼，其余时间为蓝夜');
 }
 $('themeToggle').addEventListener('click',() => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
 $('backToToday').addEventListener('click',backToToday);
@@ -551,7 +649,10 @@ document.addEventListener('visibilitychange',() => { if (!document.hidden) updat
 
 function init() {
   const now = new Date(); viewYear = now.getFullYear(); viewMonth = now.getMonth();
-  const savedTheme = storageGet('qingzheng-theme'); setTheme(savedTheme === 'dark' ? 'dark' : 'light',false);
+  const savedTheme = storageGet('qingzheng-theme');
+  const savedMode = storageGet('qingzheng-theme-mode');
+  automaticTheme = savedMode === 'auto' || !['light','dark'].includes(savedTheme);
+  setTheme(automaticTheme ? themeForTime(now) : savedTheme === 'dark' ? 'dark' : 'light',false);
   loadPresets(); updateStorageNotice(); render();
   setInterval(updateLiveClockAndCountdown,1000);
 }

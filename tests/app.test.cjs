@@ -8,13 +8,18 @@ try { ({ JSDOM } = require('jsdom')); }
 catch (_) { ({ JSDOM } = require('../.qa/node_modules/jsdom')); }
 const root = path.resolve(__dirname,'..');
 const html = fs.readFileSync(path.join(root,'index.html'),'utf8');
-function boot(t,{storage={},blocked=false,now='2026-10-16T12:00:00'}={}) {
+const initialImageCount = (html.match(/<img\b/g) || []).length;
+function boot(t,{storage={},blocked=false,now='2026-10-16T12:00:00',reducedMotion=null}={}) {
   const dom = new JSDOM(html,{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true});
   t.after(()=>dom.window.close());
   const w = dom.window, NativeDate = w.Date;
   let instant = new NativeDate(now).getTime();
   w.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [instant])); } static now() { return instant; } };
   w.confirm = () => true; w.prompt = () => null;
+  if (reducedMotion !== null) {
+    w.matchMedia = () => ({matches:reducedMotion,addEventListener(){}});
+    if (reducedMotion) w.Element.prototype.animate = () => {throw new Error('Reduced-motion users must not receive scripted animations');};
+  }
   for (const [key,value] of Object.entries(storage)) w.localStorage.setItem(key,value);
   if (blocked) Object.defineProperty(w,'localStorage',{get(){throw new Error('Storage is disabled');}});
   const context = dom.getInternalVMContext();
@@ -77,9 +82,9 @@ test('custom names are text across the settings, today, statistics and detail vi
   const {w,d,read}=boot(t,{storage:{'qingzheng-cycle':JSON.stringify([name,'constructor','__proto__'])}});
   w.openSettings();
   assert.ok(d.querySelector('#shiftDefsEditor').textContent.includes(name));
-  assert.equal(d.querySelectorAll('img').length,1);
+  assert.equal(d.querySelectorAll('img').length,initialImageCount);
   w.closeSettings(); w.showDetail(new w.Date());
-  assert.equal(d.querySelectorAll('img').length,1);
+  assert.equal(d.querySelectorAll('img').length,initialImageCount);
   assert.equal(Object.values(read('calculateMonthlyStats(2026,9)')).reduce((a,b)=>a+b,0),31);
 });
 test('long cycles search the complete cycle and no-rest cycles display a useful message',t => {
@@ -167,4 +172,62 @@ test('removing an unused default definition survives saving and reload',t => {
   const saved=w.localStorage.getItem('qingzheng-config');
   const restored=boot(t,{storage:{'qingzheng-config':saved}});
   assert.equal(restored.read('Object.hasOwn(SHIFT_DEFS,"中班")'),false);
+});
+test('upcoming dates cross month boundaries and open the correct calendar day',t => {
+  const {w,d,read}=boot(t,{now:'2026-10-29T12:00:00'});
+  const days=[...d.querySelectorAll('#upcomingList button')];
+  assert.equal(days.length,7);
+  assert.equal(days[0].dataset.date,'2026-10-29');
+  assert.equal(days[6].dataset.date,'2026-11-04');
+  days[6].click();
+  assert.equal(read('viewMonth'),10);
+  assert.equal(d.querySelector('#daysGrid .selected').dataset.date,'2026-11-04');
+  assert.equal(d.querySelector('#upcomingPanel').hidden,true);
+  assert.equal(d.querySelector('#detailPanel').classList.contains('show'),true);
+  w.closeDetail();
+  assert.equal(d.querySelector('#upcomingPanel').hidden,false);
+  assert.equal(d.querySelectorAll('#upcomingList button').length,7);
+});
+test('date inspection swaps the sidebar without recreating the month grid',t => {
+  const {w,d}=boot(t);
+  const first=d.querySelector('#daysGrid button');
+  first.click();
+  assert.equal(first.isConnected,true);
+  assert.equal(first.getAttribute('aria-pressed'),'true');
+  assert.equal(d.querySelector('#detailHeading').textContent,'10月1日 · 周四');
+  w.closeDetail();
+  assert.equal(first.isConnected,true);
+  assert.equal(first.getAttribute('aria-pressed'),'false');
+});
+test('automatic themes follow 07:00 and 19:00 while respecting manual choices',t => {
+  const {w,d,setNow}=boot(t,{now:'2026-10-16T06:59:59'});
+  assert.equal(d.documentElement.dataset.theme,'dark');
+  assert.equal(d.querySelector('#themeMood').textContent,'蓝夜');
+  assert.equal(d.querySelector('#themeAuto').getAttribute('aria-pressed'),'true');
+  setNow('2026-10-16T07:00:00');w.updateLiveClockAndCountdown();
+  assert.equal(d.documentElement.dataset.theme,'light');
+  setNow('2026-10-16T19:00:00');w.updateLiveClockAndCountdown();
+  assert.equal(d.documentElement.dataset.theme,'dark');
+  d.querySelector('#themeToggle').click();
+  assert.equal(d.documentElement.dataset.theme,'light');
+  assert.equal(w.localStorage.getItem('qingzheng-theme-mode'),'manual');
+  setNow('2026-10-16T20:00:00');w.updateLiveClockAndCountdown();
+  assert.equal(d.documentElement.dataset.theme,'light');
+  w.enableAutomaticTheme();
+  assert.equal(d.documentElement.dataset.theme,'dark');
+  assert.equal(w.localStorage.getItem('qingzheng-theme-mode'),'auto');
+});
+test('saved automatic preference takes precedence over an old manual theme value',t => {
+  const {d}=boot(t,{now:'2026-10-16T22:00:00',storage:{'qingzheng-theme':'light','qingzheng-theme-mode':'auto'}});
+  assert.equal(d.documentElement.dataset.theme,'dark');
+  const old=boot(t,{storage:{'qingzheng-theme':'dark'}});
+  assert.equal(old.d.documentElement.dataset.theme,'dark');
+  assert.equal(old.d.querySelector('#themeAuto').getAttribute('aria-pressed'),'false');
+});
+test('reduced motion keeps navigation, dialogs, details and year expansion fully usable',t => {
+  const {w,d}=boot(t,{reducedMotion:true});
+  w.nextMonth();w.prevMonth();w.showDetail(new w.Date());w.closeDetail();
+  w.openSettings();w.closeSettings();w.openYearOverview();
+  assert.equal(d.querySelector('#yearOverview').open,true);
+  assert.equal(d.querySelectorAll('#daysGrid button').length,31);
 });
