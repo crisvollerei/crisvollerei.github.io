@@ -143,7 +143,8 @@ h1 span { color: var(--accent); font-weight: 400; }
 .cycle-divider { opacity: .5; }
 .cycle-progress { overflow: hidden; margin: 10px 0 13px; height: 4px; border-radius: 20px; background: var(--ring-track); }
 .progress-bar { position: relative; height: 100%; border-radius: inherit; background: var(--accent); transition: width .55s var(--ease-out); }
-.progress-bar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent, #ffffff55, transparent); transform: translateX(-100%); animation: progress-light 7s ease-in-out infinite; }
+/* Move the highlight background within its box so the external charm can stay visible. */
+.progress-bar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(110deg, transparent, #ffffff55, transparent) -100% 0 / 50% 100% no-repeat; pointer-events: none; animation: progress-light 7s ease-in-out infinite; }
 .rest-countdown { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 10px; }
 .rest-countdown strong { font-size: 11px; font-weight: 600; color: var(--rest-color); text-align: right; }
 .next-shifts-block .section-label { margin-bottom: 8px; font-size: 10px; }
@@ -361,7 +362,7 @@ body, .panel, .today-card, .day-cell { transition: background-color .24s ease, c
 .live-dot { animation: breathing-dot 3.5s ease-in-out infinite; }
 @keyframes settle-in { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes breathing-dot { 0%,100% { box-shadow: 0 0 0 0 #6f9a7810; } 50% { box-shadow: 0 0 0 4px #6f9a7818; } }
-@keyframes progress-light { 0%,65% { transform: translateX(-100%); } 90%,100% { transform: translateX(100%); } }
+@keyframes progress-light { 0%,65% { background-position: -100% 0; } 90%,100% { background-position: 200% 0; } }
 
 @media (min-width: 1500px) {
   .main-container { max-width: 1510px; padding-inline: 48px; }
