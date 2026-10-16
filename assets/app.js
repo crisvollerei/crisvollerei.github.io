@@ -399,18 +399,27 @@ function renderUpcoming() {
   $('weekRange').textContent = `${today.getMonth()+1}.${String(today.getDate()).padStart(2,'0')} — ${last.getMonth()+1}.${String(last.getDate()).padStart(2,'0')}`;
   $('upcomingList').replaceChildren(...Array.from({length:7},(_,index) => {
     const date = addDays(today,index), name = getShift(date), def = getShiftDef(name);
+    const festival = getHoliday(date);
     const row = mk('button',{cls:`upcoming-day${index === 0 ? ' is-today' : ''}`,onclick:() => {
       navigateMonth(date.getFullYear(),date.getMonth());
       showDetail(date);
     }});
     row.dataset.date = formatDateISO(date);
-    row.setAttribute('aria-label',`${formatDate(date)} ${name} 查看详情`);
+    row.setAttribute('aria-label',`${formatDate(date)} ${getWeekdayCn(date)}${festival ? ` ${festival}` : ''} ${name} 查看详情`);
     const dateLabel = mk('span',{cls:'upcoming-date'});
     dateLabel.append(mk('strong',{text:`${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`}),mk('small',{text:index === 0 ? '今天' : index === 1 ? '明天' : getWeekdayCn(date)}));
     const shift = mk('span',{cls:`upcoming-shift ${def.cssClass}`});
     shift.append(mk('span',{cls:`shift-dot ${def.cssClass}`}),mk('span',{text:name}));
-    row.title = shiftTimeText(name);
+    row.title = [festival,shiftTimeText(name)].filter(Boolean).join(' · ');
     row.append(dateLabel,shift);
+    if (festival) {
+      row.classList.add('is-festival');
+      const parts = festivalParts(festival);
+      if (parts.length) row.dataset.festivalPalette = FESTIVAL_ART[parts[0]].palette;
+      const tag = mk('span',{cls:'upcoming-festival'});
+      tag.append(makeFestivalArt(festival),mk('span',{text:festival}));
+      row.append(tag);
+    }
     return row;
   }));
 }

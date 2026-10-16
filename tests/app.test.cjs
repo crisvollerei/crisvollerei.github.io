@@ -287,3 +287,54 @@ test('coinciding festivals preserve both names and illustrations when switching 
   assert.equal(cell.dataset.festivalPalette,palette);
   assert.equal(d.querySelector('#todayFestival').querySelectorAll('.festival-art svg').length,2);
 });
+test('the coming week identifies Chongyang and all other supported festivals without decorating ordinary days',t => {
+  const cases = [
+    ['2026-10-16','2026-10-18','重阳节'],['2025-12-30','2026-01-01','元旦'],
+    ['2026-02-14','2026-02-16','除夕'],['2026-02-15','2026-02-17','春节'],
+    ['2026-03-01','2026-03-03','元宵节'],['2026-04-03','2026-04-05','清明'],
+    ['2026-04-29','2026-05-01','劳动节'],['2026-06-17','2026-06-19','端午节'],
+    ['2026-09-23','2026-09-25','中秋节'],['2026-09-29','2026-10-01','国庆节']
+  ];
+  for (const [now,date,festival] of cases) {
+    const {d,w}=boot(t,{now:`${now}T12:00:00`});
+    const row=d.querySelector(`#upcomingList [data-date="${date}"]`);
+    assert.equal(d.querySelectorAll('#upcomingList button').length,7);
+    assert.equal(row.querySelector('.upcoming-festival').textContent,festival,date);
+    assert.ok(row.getAttribute('aria-label').includes(festival),date);
+    assert.ok(row.querySelector('.upcoming-shift').textContent,date);
+    for (const use of row.querySelectorAll('.festival-art use')) assert.ok(d.querySelector(use.getAttribute('href')),date);
+    for (const other of d.querySelectorAll('#upcomingList button')) {
+      const ordinary=w.ScheduleCore.parseDate(other.dataset.date);
+      if (!w.getHoliday(ordinary)) assert.equal(other.querySelector('.upcoming-festival'),null,other.dataset.date);
+    }
+    row.click();
+    assert.equal(d.querySelector('#detailFestival strong').textContent,festival,date);
+    assert.equal(d.querySelector('#daysGrid .selected').dataset.date,date);
+  }
+});
+test('the coming week updates its festival rows at midnight and across the year boundary',t => {
+  const {w,d,setNow}=boot(t,{now:'2026-12-31T23:59:59'});
+  assert.equal(d.querySelector('#upcomingList .upcoming-festival').textContent,'元旦');
+  setNow('2027-01-01T00:00:00'); w.updateLiveClockAndCountdown();
+  const today=d.querySelector('#upcomingList .is-today');
+  assert.equal(today.dataset.date,'2027-01-01');
+  assert.equal(today.querySelector('.upcoming-festival').textContent,'元旦');
+  today.click();
+  assert.equal(d.querySelector('.day-cell.selected').dataset.date,'2027-01-01');
+  setNow('2027-01-02T00:00:00'); w.updateLiveClockAndCountdown();
+  assert.equal(d.querySelector('#upcomingList .upcoming-festival'),null);
+});
+test('the coming week keeps both coinciding festivals and the shared illustration palette in either theme',t => {
+  const {w,d}=boot(t,{now:'2020-09-29T12:00:00'});
+  const row=d.querySelector('#upcomingList [data-date="2020-10-01"]');
+  assert.equal(row.querySelector('.upcoming-festival').textContent,'国庆节·中秋节');
+  assert.equal(row.querySelectorAll('.festival-art svg').length,2);
+  const before=row.querySelector('.upcoming-festival').innerHTML,palette=row.dataset.festivalPalette;
+  d.querySelector('#themeToggle').click();
+  assert.equal(row.querySelector('.upcoming-festival').innerHTML,before);
+  assert.equal(row.dataset.festivalPalette,palette);
+  row.click();
+  assert.equal(d.querySelector('#detailFestival strong').textContent,'国庆节·中秋节');
+  w.closeDetail();
+  assert.equal(d.querySelector('#upcomingPanel').hidden,false);
+});
