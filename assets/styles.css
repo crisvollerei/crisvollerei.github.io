@@ -574,6 +574,21 @@ body, .panel, .today-card, .day-cell { transition: background-color .24s ease, c
   .year-overview h2 { font-size: 12px; }
 }
 
+/* Keep editable dialogs still while a mobile keyboard changes the visual viewport. */
+.modal.keyboard-dialog {
+  --dialog-gap: 22px;
+  padding: calc(var(--dialog-viewport-top, 0px) + var(--dialog-gap) + env(safe-area-inset-top, 0px)) var(--dialog-gap) calc(var(--dialog-gap) + env(safe-area-inset-bottom, 0px));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.keyboard-dialog .modal-content {
+  flex-shrink: 0;
+  max-height: calc(var(--dialog-viewport-height, 100vh) - var(--dialog-gap) * 2 - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 767px), (hover: none) {
+  .modal.keyboard-dialog { --dialog-gap: 13px; align-items: flex-start; }
+}
+
 /* A small character scene establishes the theme without covering any controls. */
 body { position: relative; isolation: isolate; }
 body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse 60% 35% at 80% 0%,#dfd7ed55,transparent 80%),radial-gradient(ellipse 30% 30% at 0% 70%,#e3e7f244,transparent 90%); }

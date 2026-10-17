@@ -26,6 +26,16 @@ function boot(t,{storage={},blocked=false,now='2026-10-16T12:00:00',reducedMotio
   for (const filename of ['schedule-core.js','calendar-data.js','app.js']) vm.runInContext(fs.readFileSync(path.join(root,'assets',filename),'utf8'),context,{filename});
   return {w,d:w.document,read:expression=>vm.runInContext(expression,context),setNow:value=>{instant=new NativeDate(value).getTime();}};
 }
+function keyboardViewport(w,{visual=true,height=844}={}) {
+  const viewport = new w.EventTarget(), pending = new Map();
+  let nextTimer = 1;
+  viewport.height = height; viewport.offsetTop = 0;
+  Object.defineProperty(w,'visualViewport',{value:visual ? viewport : undefined,configurable:true});
+  Object.defineProperty(w,'innerHeight',{value:height,writable:true,configurable:true});
+  w.setTimeout = callback => { const id = nextTimer++; pending.set(id,callback); return id; };
+  w.clearTimeout = id => pending.delete(id);
+  return {viewport,pending,flush() { const callbacks = [...pending.values()]; pending.clear(); callbacks.forEach(callback=>callback()); }};
+}
 test('default initialization renders a full month and twelve accessible month buttons',t => {
   const {d} = boot(t);
   assert.equal(d.querySelectorAll('#daysGrid button').length,31);
@@ -283,6 +293,113 @@ test('preset naming supports reduced motion and theme changes while preserving t
   const saved=read('JSON.stringify(Core.normalizeConfig(PRESETS[0]))');
   assert.equal(saved,before);
   assert.equal(d.querySelector('#presetModal').hidden,true);
+});
+test('editable dialogs do not animate focused controls, while the non-editable picker retains its animation',t => {
+  const {w,d}=boot(t,{reducedMotion:false}),animated=[];
+  w.Element.prototype.animate = function() {
+    animated.push(this);
+    return {finished:Promise.resolve(),cancel(){}};
+  };
+  w.saveAsPreset();assert.equal(d.activeElement.id,'presetName');
+  assert.equal(d.querySelector('#presetModal').classList.contains('keyboard-dialog'),true);
+  w.closePresetDialog();w.openSettings();
+  assert.equal(d.querySelector('#settingsModal').classList.contains('keyboard-dialog'),true);
+  assert.deepEqual(animated,[]);
+  w.closeSettings();w.openPicker();
+  assert.deepEqual(animated,[d.querySelector('#pickerModal [role="dialog"]')]);
+});
+test('input dialogs capture viewport geometry before autofocus can open the keyboard',t => {
+  const {w,d}=boot(t),{viewport}=keyboardViewport(w),input=d.querySelector('#presetName'),overlay=d.querySelector('#presetModal');
+  const focus=input.focus.bind(input);
+  let focusCalls=0;
+  input.focus = options => {
+    focusCalls++;
+    assert.equal(options.preventScroll,true);
+    assert.equal(overlay.classList.contains('keyboard-dialog'),true);
+    assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+    viewport.height=480;viewport.dispatchEvent(new w.Event('resize'));
+    focus(options);
+  };
+  w.saveAsPreset();
+  assert.equal(focusCalls,1);assert.equal(d.activeElement,input);
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+});
+test('keyboard animation events settle into one geometry update without refocusing or replacing the form',t => {
+  const {w,d}=boot(t),{viewport,pending,flush}=keyboardViewport(w);
+  const overlay=d.querySelector('#presetModal'),form=d.querySelector('#presetForm'),input=d.querySelector('#presetName');
+  const focus=input.focus.bind(input);let focusCalls=0,writes=0;
+  input.focus = options => {focusCalls++;focus(options);};
+  const setProperty=overlay.style.setProperty.bind(overlay.style);
+  overlay.style.setProperty = (...args) => {writes++;setProperty(...args);};
+  w.saveAsPreset();input.value='键盘动画期间的草稿';
+  for (let frame=0;frame<60;frame++) {
+    viewport.height=844-frame*6;viewport.offsetTop=frame/3;
+    viewport.dispatchEvent(new w.Event('resize'));viewport.dispatchEvent(new w.Event('scroll'));
+    w.dispatchEvent(new w.Event('resize'));
+  }
+  assert.equal(pending.size,1);assert.equal(writes,2);
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+  viewport.height=470;viewport.offsetTop=20;flush();
+  assert.equal(writes,4);assert.equal(focusCalls,1);assert.equal(d.activeElement,input);
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'470px');
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-top'),'20px');
+  assert.equal(d.querySelector('#presetForm'),form);assert.equal(input.value,'键盘动画期间的草稿');
+  viewport.dispatchEvent(new w.Event('resize'));flush();assert.equal(writes,4);
+  input.blur();viewport.height=844;viewport.offsetTop=0;viewport.dispatchEvent(new w.Event('resize'));flush();
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+  assert.equal(focusCalls,1);assert.equal(input.value,'键盘动画期间的草稿');
+});
+test('closing an input dialog removes viewport listeners and cancels pending keyboard updates',t => {
+  const {w,d}=boot(t),{viewport,pending,flush}=keyboardViewport(w),overlay=d.querySelector('#presetModal');
+  w.saveAsPreset();viewport.height=430;viewport.dispatchEvent(new w.Event('resize'));
+  assert.equal(pending.size,1);w.closePresetDialog();
+  assert.equal(pending.size,0);assert.equal(overlay.classList.contains('keyboard-dialog'),false);
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'');
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-top'),'');
+  w.openPicker();
+  viewport.dispatchEvent(new w.Event('resize'));viewport.dispatchEvent(new w.Event('scroll'));w.dispatchEvent(new w.Event('resize'));flush();
+  assert.equal(pending.size,0);assert.equal(overlay.style.cssText,'');
+  assert.equal(d.querySelector('#pickerModal').hidden,false);
+});
+test('a short keyboard viewport reveals the focused field by scrolling only the form',t => {
+  const {w,d}=boot(t),{viewport,flush}=keyboardViewport(w);
+  w.saveAsPreset();
+  const form=d.querySelector('#presetForm'),input=d.querySelector('#presetName');
+  input.value='横屏也能继续输入';
+  form.getBoundingClientRect = () => ({top:13,bottom:180,height:167});
+  input.getBoundingClientRect = () => ({top:188,bottom:230,height:42});
+  input.focus = () => {throw new Error('Settling the keyboard must not refocus the input');};
+  w.scrollTo = () => {throw new Error('Settling the keyboard must not scroll the page');};
+  viewport.height=200;viewport.dispatchEvent(new w.Event('resize'));flush();
+  assert.equal(form.scrollTop,62);assert.equal(d.activeElement,input);
+  input.getBoundingClientRect = () => ({top:0,bottom:42,height:42});
+  viewport.height=210;viewport.dispatchEvent(new w.Event('resize'));flush();
+  assert.equal(form.scrollTop,37);assert.equal(input.value,'横屏也能继续输入');
+});
+test('keyboard geometry falls back to window resize when visualViewport is unavailable',t => {
+  const {w,d}=boot(t),{pending,flush}=keyboardViewport(w,{visual:false}),overlay=d.querySelector('#presetModal');
+  w.saveAsPreset();const input=d.querySelector('#presetName');input.value='旧版内嵌浏览器';
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+  for (const height of [700,580,420,320]) {w.innerHeight=height;w.dispatchEvent(new w.Event('resize'));}
+  assert.equal(pending.size,1);assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+  flush();assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'320px');
+  assert.equal(input.value,'旧版内嵌浏览器');assert.equal(d.activeElement,input);
+  w.submitPreset();assert.equal(d.querySelector('.preset-btn').textContent,'旧版内嵌浏览器');
+});
+test('rapid reopening and switching editable dialogs do not reuse stale keyboard geometry',t => {
+  const {w,d}=boot(t),{viewport,pending,flush}=keyboardViewport(w);
+  w.saveAsPreset();viewport.height=440;viewport.dispatchEvent(new w.Event('resize'));
+  w.closePresetDialog();viewport.height=700;w.saveAsPreset();
+  assert.equal(pending.size,0);flush();
+  assert.equal(d.querySelector('#presetModal').style.getPropertyValue('--dialog-viewport-height'),'700px');
+  viewport.height=400;viewport.dispatchEvent(new w.Event('resize'));w.openSettings();
+  assert.equal(pending.size,0);assert.equal(d.querySelector('#presetModal').style.cssText,'');
+  const overlay=d.querySelector('#settingsModal'),input=d.querySelector('#cyclePattern');
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'400px');
+  input.value='白班 休息';input.focus();viewport.height=300;viewport.dispatchEvent(new w.Event('resize'));flush();
+  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'300px');
+  assert.equal(d.activeElement,input);assert.equal(input.value,'白班 休息');
+  w.closeSettings();assert.equal(overlay.style.cssText,'');
 });
 test('all shift types are included in monthly statistics, including the fourth and later shifts',t => {
   const {w,d}=boot(t,{storage:{'qingzheng-cycle':'["白班","夜班","中班","休息"]'}});

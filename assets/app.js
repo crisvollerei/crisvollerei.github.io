@@ -81,6 +81,7 @@ let draftDefs = null;
 let pickerYear;
 let activeDialog = null;
 let dialogTrigger = null;
+let dialogViewportCleanup = null;
 let lastDayKey = '';
 let lastTodayShiftKey = '';
 let lastRenderedMonth = null;
@@ -684,7 +685,7 @@ function submitPreset() {
   if (!name) error = '请填写方案名称。';
   else if (name.length > 40) error = '方案名称最多 40 个字符。';
   else if (PRESETS.some(preset => preset.name === name)) error = '已有同名方案，请换一个名字。';
-  if (error) { presetNameError(error); $('presetName').focus(); return; }
+  if (error) { presetNameError(error); $('presetName').focus({preventScroll:true}); return; }
   const preset = {...captureCurrentConfig(),id:`preset_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,name,createdAt:new Date().toISOString()};
   PRESETS.push(preset); activePresetId = preset.id;
   const saved = savePresets(); renderPresetBar();
@@ -799,20 +800,60 @@ function saveSettings() {
 }
 
 // Dialogs retain keyboard focus, close on Escape/backdrop, and never navigate the month behind them.
+function watchDialogViewport(overlay, content) {
+  const viewport = window.visualViewport;
+  let timer;
+  function update() {
+    if (activeDialog !== overlay.id) return;
+    const height = Math.round(viewport?.height || window.innerHeight);
+    const top = Math.max(0,Math.round(viewport?.offsetTop || 0));
+    if (!Number.isFinite(height) || height <= 0) return;
+    for (const [name,value] of [['--dialog-viewport-height',height],['--dialog-viewport-top',top]]) {
+      if (overlay.style.getPropertyValue(name) !== `${value}px`) overlay.style.setProperty(name,`${value}px`);
+    }
+    const focused = document.activeElement;
+    if (overlay.contains(focused) && focused.matches('input,textarea')) {
+      const field = focused.getBoundingClientRect(), bounds = content.getBoundingClientRect();
+      // Scroll only the form, never refocus or pan the page while settling the keyboard.
+      if (bounds.height > 0 && field.bottom > bounds.bottom - 12) content.scrollTop += field.bottom - bounds.bottom + 12;
+      else if (bounds.height > 0 && field.top < bounds.top + 12) content.scrollTop -= bounds.top + 12 - field.top;
+    }
+  }
+  // Keyboard animations can emit resize/scroll every frame. Only commit settled geometry.
+  function settled() { clearTimeout(timer); timer = setTimeout(update,160); }
+  overlay.classList.add('keyboard-dialog');
+  update();
+  window.addEventListener('resize',settled);
+  viewport?.addEventListener('resize',settled);
+  viewport?.addEventListener('scroll',settled);
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener('resize',settled);
+    viewport?.removeEventListener('resize',settled);
+    viewport?.removeEventListener('scroll',settled);
+    overlay.classList.remove('keyboard-dialog');
+    overlay.style.removeProperty('--dialog-viewport-height');
+    overlay.style.removeProperty('--dialog-viewport-top');
+  };
+}
 function openDialog(id, initialFocus = null) {
   if (activeDialog) closeDialog(activeDialog);
   dialogTrigger = document.activeElement; activeDialog = id; $(id).hidden = false;
   document.querySelector('.main-container').inert = true; document.body.style.overflow = 'hidden';
   const content = $(id).querySelector('[role="dialog"]');
-  (initialFocus || content).focus({preventScroll:true});
+  const acceptsInput = !!content.querySelector('input,textarea');
+  if (acceptsInput) dialogViewportCleanup = watchDialogViewport($(id),content);
   content.scrollTop = 0;
-  animateElement(content,[{opacity:0,transform:'translateY(10px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:280});
+  (initialFocus || content).focus({preventScroll:true});
+  // Moving a focused input while the keyboard pans the viewport can flicker in WebViews.
+  if (!acceptsInput) animateElement(content,[{opacity:0,transform:'translateY(10px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:280});
 }
 function closeDialog(id) {
   $(id).hidden = true;
   if (activeDialog !== id) return;
+  dialogViewportCleanup?.(); dialogViewportCleanup = null;
   activeDialog = null; document.querySelector('.main-container').inert = false; document.body.style.overflow = '';
-  if (dialogTrigger?.isConnected) dialogTrigger.focus(); dialogTrigger = null;
+  if (dialogTrigger?.isConnected) dialogTrigger.focus({preventScroll:true}); dialogTrigger = null;
 }
 function dismissDialog(id) {
   if (id === 'settingsModal') closeSettings();
