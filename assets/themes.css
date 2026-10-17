@@ -4,9 +4,9 @@
   --text: #36374d; --text-muted: #73748a;
   --accent: #81709f; --accent-strong: #70608c; --accent-soft: #eeeaf5;
   --theme-metal: #a99cbc; --theme-metal-soft: #d8cee4; --theme-ink: #867299;
-  --theme-ivory: #fffefd; --theme-gold: #b7a784;
-  --hero-bg: #f9f8fd; --hero-scene: url('silver-atrium.svg'); --hero-line: #c7bfd9;
-  --frame-texture: url('silver-pearl-trim.svg'); --surface-texture: url('silver-scales.svg');
+  --theme-gold: #b7a784;
+  --hero-bg: #f9f8fd; --hero-scene: url('silver-atrium.svg?v=3b5ca54a83da'); --hero-line: #c7bfd9;
+  --frame-texture: url('silver-pearl-trim.svg?v=2ea400839317'); --surface-texture: url('silver-scales.svg?v=5e652481c215');
   --shadow: 0 10px 30px #666b8b09, 0 1px 3px #666b8b08;
 }
 [data-theme="dark"] {
@@ -14,9 +14,9 @@
   --text: #e8eef5; --text-muted: #abb9cd;
   --accent: #a6c9dd; --accent-strong: #4b6e92; --accent-soft: #2c435e;
   --theme-metal: #c5af86; --theme-metal-soft: #776f66; --theme-ink: #c4d5e6;
-  --theme-ivory: #e7edf4; --theme-gold: #ccb58c;
-  --hero-bg: #192941; --hero-scene: url('tidal-observatory.svg'); --hero-line: #71819a;
-  --frame-texture: url('night-lace.svg'); --surface-texture: url('night-embroidery.svg');
+  --theme-gold: #ccb58c;
+  --hero-bg: #192941; --hero-scene: url('tidal-observatory.svg?v=d0e8965e7c5c'); --hero-line: #71819a;
+  --frame-texture: url('night-lace.svg?v=05a442312da3'); --surface-texture: url('night-embroidery.svg?v=7f08b19e0e60');
   --shadow: 0 10px 30px #060e1a20, 0 1px 3px #060e1a18;
   --cell-day-bg: #243b52; --cell-night-bg: #303952; --cell-rest-bg: #263f43;
 }

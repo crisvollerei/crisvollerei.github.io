@@ -9,3 +9,8 @@ DESIGN_NOTES.md
 package*.json
 *.mjs
 wrangler.jsonc
+.github/**
+avatar.png
+assets/chibi-day.png
+assets/chibi-night.png
+qingzheng-offline.html
