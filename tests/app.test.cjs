@@ -153,7 +153,7 @@ test('saving presets works when native WebView prompts return null, throw or are
     w.prompt=prompt;w.confirm=()=>{throw new Error('Native confirmation is disabled');};
     const opener=d.querySelector('[onclick="saveAsPreset()"]');opener.focus();read(opener.getAttribute('onclick'));
     assert.equal(d.querySelector('#presetModal').hidden,false);
-    assert.equal(d.activeElement.id,'presetName');
+    assert.equal(d.activeElement.id,'presetForm');
     assert.equal(d.querySelector('.main-container').inert,true);
     assert.equal(read('PRESETS.length'),0);
     d.querySelector('#presetName').value='应用内方案';
@@ -294,112 +294,131 @@ test('preset naming supports reduced motion and theme changes while preserving t
   assert.equal(saved,before);
   assert.equal(d.querySelector('#presetModal').hidden,true);
 });
-test('editable dialogs do not animate focused controls, while the non-editable picker retains its animation',t => {
+test('dialogs have no entry animation and input pages wait for a deliberate input focus',t => {
   const {w,d}=boot(t,{reducedMotion:false}),animated=[];
   w.Element.prototype.animate = function() {
     animated.push(this);
     return {finished:Promise.resolve(),cancel(){}};
   };
-  w.saveAsPreset();assert.equal(d.activeElement.id,'presetName');
-  assert.equal(d.querySelector('#presetModal').classList.contains('keyboard-dialog'),true);
+  w.saveAsPreset();assert.equal(d.activeElement.id,'presetForm');
+  assert.equal(d.documentElement.classList.contains('input-view-open'),true);
+  assert.equal(d.querySelector('#presetModal').classList.contains('input-view'),true);
+  assert.equal(d.body.style.overflow,'');
+  d.querySelector('#presetName').focus();assert.equal(d.activeElement.id,'presetName');
   w.closePresetDialog();w.openSettings();
-  assert.equal(d.querySelector('#settingsModal').classList.contains('keyboard-dialog'),true);
+  assert.equal(d.querySelector('#settingsModal').classList.contains('input-view'),true);
+  assert.equal(d.activeElement.getAttribute('role'),'dialog');
   assert.deepEqual(animated,[]);
   w.closeSettings();w.openPicker();
-  assert.deepEqual(animated,[d.querySelector('#pickerModal [role="dialog"]')]);
+  assert.deepEqual(animated,[]);assert.equal(d.documentElement.classList.contains('input-view-open'),false);
 });
-test('input dialogs capture viewport geometry before autofocus can open the keyboard',t => {
-  const {w,d}=boot(t),{viewport}=keyboardViewport(w),input=d.querySelector('#presetName'),overlay=d.querySelector('#presetModal');
-  const focus=input.focus.bind(input);
-  let focusCalls=0;
-  input.focus = options => {
-    focusCalls++;
-    assert.equal(options.preventScroll,true);
-    assert.equal(overlay.classList.contains('keyboard-dialog'),true);
-    assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
-    viewport.height=480;viewport.dispatchEvent(new w.Event('resize'));
-    focus(options);
+test('opening a dialog cancels existing feedback and blocks scripted animations during input',t => {
+  const {w,d,read}=boot(t,{reducedMotion:false});let started=0,cancelled=0;
+  w.Element.prototype.animate = function() {
+    started++;
+    return {finished:Promise.resolve(),cancel(){cancelled++;}};
   };
-  w.saveAsPreset();
-  assert.equal(focusCalls,1);assert.equal(d.activeElement,input);
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+  w.animateElement(d.querySelector('#companionCharacter'),[{opacity:0},{opacity:1}]);
+  assert.equal(started,1);assert.equal(read('runningAnimations.size'),1);
+  w.saveAsPreset();assert.equal(cancelled,1);assert.equal(read('runningAnimations.size'),0);
+  w.animateElement(d.querySelector('#presetForm'),[{opacity:0},{opacity:1}]);assert.equal(started,1);
+  w.closePresetDialog();w.animateElement(d.querySelector('#companionCharacter'),[{opacity:0},{opacity:1}]);
+  assert.equal(started,2);
 });
-test('keyboard animation events settle into one geometry update without refocusing or replacing the form',t => {
+test('keyboard events schedule no layout work, style writes or refocusing in the static input page',t => {
   const {w,d}=boot(t),{viewport,pending,flush}=keyboardViewport(w);
   const overlay=d.querySelector('#presetModal'),form=d.querySelector('#presetForm'),input=d.querySelector('#presetName');
   const focus=input.focus.bind(input);let focusCalls=0,writes=0;
   input.focus = options => {focusCalls++;focus(options);};
   const setProperty=overlay.style.setProperty.bind(overlay.style);
   overlay.style.setProperty = (...args) => {writes++;setProperty(...args);};
-  w.saveAsPreset();input.value='键盘动画期间的草稿';
+  w.saveAsPreset();input.value='键盘动画期间的草稿';input.focus();
+  form.getBoundingClientRect = input.getBoundingClientRect = () => {throw new Error('Keyboard events must not measure layout');};
+  w.scrollTo = () => {throw new Error('Keyboard events must not force scrolling');};
   for (let frame=0;frame<60;frame++) {
     viewport.height=844-frame*6;viewport.offsetTop=frame/3;
     viewport.dispatchEvent(new w.Event('resize'));viewport.dispatchEvent(new w.Event('scroll'));
     w.dispatchEvent(new w.Event('resize'));
   }
-  assert.equal(pending.size,1);assert.equal(writes,2);
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
-  viewport.height=470;viewport.offsetTop=20;flush();
-  assert.equal(writes,4);assert.equal(focusCalls,1);assert.equal(d.activeElement,input);
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'470px');
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-top'),'20px');
+  assert.equal(pending.size,0);flush();assert.equal(writes,0);
+  assert.equal(overlay.style.cssText,'');assert.equal(focusCalls,1);assert.equal(d.activeElement,input);
   assert.equal(d.querySelector('#presetForm'),form);assert.equal(input.value,'键盘动画期间的草稿');
-  viewport.dispatchEvent(new w.Event('resize'));flush();assert.equal(writes,4);
+  viewport.dispatchEvent(new w.Event('resize'));flush();assert.equal(writes,0);
   input.blur();viewport.height=844;viewport.offsetTop=0;viewport.dispatchEvent(new w.Event('resize'));flush();
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
+  assert.equal(pending.size,0);assert.equal(overlay.style.cssText,'');
   assert.equal(focusCalls,1);assert.equal(input.value,'键盘动画期间的草稿');
 });
-test('closing an input dialog removes viewport listeners and cancels pending keyboard updates',t => {
+test('closing an input page removes its mode without leaving keyboard work for the next dialog',t => {
   const {w,d}=boot(t),{viewport,pending,flush}=keyboardViewport(w),overlay=d.querySelector('#presetModal');
   w.saveAsPreset();viewport.height=430;viewport.dispatchEvent(new w.Event('resize'));
-  assert.equal(pending.size,1);w.closePresetDialog();
-  assert.equal(pending.size,0);assert.equal(overlay.classList.contains('keyboard-dialog'),false);
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'');
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-top'),'');
+  assert.equal(pending.size,0);w.closePresetDialog();
+  assert.equal(overlay.classList.contains('input-view'),false);
+  assert.equal(d.documentElement.classList.contains('input-view-open'),false);
   w.openPicker();
   viewport.dispatchEvent(new w.Event('resize'));viewport.dispatchEvent(new w.Event('scroll'));w.dispatchEvent(new w.Event('resize'));flush();
   assert.equal(pending.size,0);assert.equal(overlay.style.cssText,'');
   assert.equal(d.querySelector('#pickerModal').hidden,false);
 });
-test('a short keyboard viewport reveals the focused field by scrolling only the form',t => {
-  const {w,d}=boot(t),{viewport,flush}=keyboardViewport(w);
-  w.saveAsPreset();
-  const form=d.querySelector('#presetForm'),input=d.querySelector('#presetName');
-  input.value='横屏也能继续输入';
-  form.getBoundingClientRect = () => ({top:13,bottom:180,height:167});
-  input.getBoundingClientRect = () => ({top:188,bottom:230,height:42});
-  input.focus = () => {throw new Error('Settling the keyboard must not refocus the input');};
-  w.scrollTo = () => {throw new Error('Settling the keyboard must not scroll the page');};
-  viewport.height=200;viewport.dispatchEvent(new w.Event('resize'));flush();
-  assert.equal(form.scrollTop,62);assert.equal(d.activeElement,input);
-  input.getBoundingClientRect = () => ({top:0,bottom:42,height:42});
-  viewport.height=210;viewport.dispatchEvent(new w.Event('resize'));flush();
-  assert.equal(form.scrollTop,37);assert.equal(input.value,'横屏也能继续输入');
-});
-test('keyboard geometry falls back to window resize when visualViewport is unavailable',t => {
-  const {w,d}=boot(t),{pending,flush}=keyboardViewport(w,{visual:false}),overlay=d.querySelector('#presetModal');
-  w.saveAsPreset();const input=d.querySelector('#presetName');input.value='旧版内嵌浏览器';
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
-  for (const height of [700,580,420,320]) {w.innerHeight=height;w.dispatchEvent(new w.Event('resize'));}
-  assert.equal(pending.size,1);assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'844px');
-  flush();assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'320px');
+test('the plain input page does not require or even read the Visual Viewport API',t => {
+  const {w,d}=boot(t);
+  Object.defineProperty(w,'visualViewport',{get(){throw new Error('No viewport access is needed');},configurable:true});
+  w.saveAsPreset();const input=d.querySelector('#presetName');input.value='旧版内嵌浏览器';input.focus();
+  w.dispatchEvent(new w.Event('resize'));
   assert.equal(input.value,'旧版内嵌浏览器');assert.equal(d.activeElement,input);
   w.submitPreset();assert.equal(d.querySelector('.preset-btn').textContent,'旧版内嵌浏览器');
 });
-test('rapid reopening and switching editable dialogs do not reuse stale keyboard geometry',t => {
+test('rapid reopening and switching input pages retain only the active page and its draft',t => {
   const {w,d}=boot(t),{viewport,pending,flush}=keyboardViewport(w);
   w.saveAsPreset();viewport.height=440;viewport.dispatchEvent(new w.Event('resize'));
   w.closePresetDialog();viewport.height=700;w.saveAsPreset();
   assert.equal(pending.size,0);flush();
-  assert.equal(d.querySelector('#presetModal').style.getPropertyValue('--dialog-viewport-height'),'700px');
+  assert.equal(d.querySelector('#presetModal').classList.contains('input-view'),true);
   viewport.height=400;viewport.dispatchEvent(new w.Event('resize'));w.openSettings();
   assert.equal(pending.size,0);assert.equal(d.querySelector('#presetModal').style.cssText,'');
   const overlay=d.querySelector('#settingsModal'),input=d.querySelector('#cyclePattern');
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'400px');
+  assert.equal(overlay.classList.contains('input-view'),true);
+  assert.equal(d.querySelector('#presetModal').classList.contains('input-view'),false);
   input.value='白班 休息';input.focus();viewport.height=300;viewport.dispatchEvent(new w.Event('resize'));flush();
-  assert.equal(overlay.style.getPropertyValue('--dialog-viewport-height'),'300px');
+  assert.equal(overlay.style.cssText,'');
   assert.equal(d.activeElement,input);assert.equal(input.value,'白班 休息');
   w.closeSettings();assert.equal(overlay.style.cssText,'');
+});
+test('input pauses the live timer and background writes, then catches up when closed',t => {
+  const {w,d,read,setNow}=boot(t),before=d.querySelector('.main-container').innerHTML,clock=d.querySelector('#liveClock').textContent;
+  assert.notEqual(read('liveTimer'),null);w.saveAsPreset();assert.equal(read('liveTimer'),null);
+  d.querySelector('#presetName').value='不受秒表刷新影响';
+  setNow('2026-10-16T12:00:15');w.updateLiveClockAndCountdown();
+  assert.equal(d.querySelector('.main-container').innerHTML,before);
+  assert.equal(d.querySelector('#liveClock').textContent,clock);
+  assert.equal(d.querySelector('#presetName').value,'不受秒表刷新影响');
+  w.closePresetDialog();assert.notEqual(read('liveTimer'),null);
+  assert.notEqual(d.querySelector('#liveClock').textContent,clock);
+});
+test('midnight refresh is deferred while typing and applied after closing without losing the draft',t => {
+  const {w,d,read,setNow}=boot(t,{now:'2026-10-16T23:59:59'});
+  w.saveAsPreset();d.querySelector('#presetName').value='跨过午夜';
+  setNow('2026-10-17T00:00:01');w.updateLiveClockAndCountdown();
+  assert.equal(read('lastDayKey'),'2026-10-16');assert.equal(d.querySelector('#presetName').value,'跨过午夜');
+  w.submitPreset();assert.equal(read('lastDayKey'),'2026-10-17');assert.equal(d.querySelector('.preset-btn').textContent,'跨过午夜');
+});
+test('input page cancellation restores the calendar scroll position and opening control',t => {
+  const {w,d}=boot(t),opener=d.querySelector('[onclick="saveAsPreset()"]'),scrolls=[];
+  w.scrollX=0;w.scrollY=640;
+  w.scrollTo = (x,y) => {scrolls.push([x,y]);w.scrollX=x;w.scrollY=y;};
+  opener.focus();w.saveAsPreset();assert.deepEqual(scrolls,[[0,0]]);
+  w.scrollY=60;w.closePresetDialog();assert.deepEqual(scrolls,[[0,0],[0,640]]);
+  assert.equal(d.activeElement,opener);assert.equal(d.querySelector('.main-container').inert,false);
+  assert.equal(d.documentElement.classList.contains('input-view-open'),false);
+});
+test('repeated input page opening and inactive closes do not create duplicate live timers',t => {
+  const {w,read}=boot(t),timers=new Set(),clear=w.clearInterval.bind(w);let next=100;
+  w.setInterval = () => {const id=next++;timers.add(id);return id;};
+  w.clearInterval = id => {timers.delete(id);clear(id);};
+  for(let round=0;round<5;round++) {
+    w.saveAsPreset();assert.equal(timers.size,0);assert.equal(read('liveTimer'),null);
+    w.closePresetDialog();assert.equal(timers.size,1);
+    w.closeSettings();assert.equal(timers.size,1);
+  }
 });
 test('all shift types are included in monthly statistics, including the fourth and later shifts',t => {
   const {w,d}=boot(t,{storage:{'qingzheng-cycle':'["白班","夜班","中班","休息"]'}});

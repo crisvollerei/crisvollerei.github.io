@@ -28,6 +28,7 @@ const FESTIVAL_ART = Object.freeze({
 let storageFailed = false;
 let recoveredData = false;
 let toastTimer;
+let liveTimer = null;
 
 function storageGet(key) {
   try { return localStorage.getItem(key); }
@@ -81,7 +82,7 @@ let draftDefs = null;
 let pickerYear;
 let activeDialog = null;
 let dialogTrigger = null;
-let dialogViewportCleanup = null;
+let inputViewScroll = null;
 let lastDayKey = '';
 let lastTodayShiftKey = '';
 let lastRenderedMonth = null;
@@ -116,7 +117,7 @@ const runningAnimations = new Set();
 const elementAnimations = new WeakMap();
 const motionPreference = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
-function motionAllowed() { return !!motionPreference && !motionPreference.matches; }
+function motionAllowed() { return !activeDialog && !inputViewScroll && !!motionPreference && !motionPreference.matches; }
 function animateElement(element, frames, options = {}) {
   if (!element || typeof element.animate !== 'function' || !motionAllowed()) return;
   elementAnimations.get(element)?.cancel();
@@ -377,6 +378,7 @@ function updateTodayCardDisplay(info, now = new Date()) {
   $('restCountdown').textContent = days === 0 ? (info.isCrossDay ? '本班结束后' : '就是今天') : days < 0 ? '周期内无休息日' : `${days} 天后`;
 }
 function updateLiveClockAndCountdown() {
+  if (activeDialog || document.hidden) return;
   const now = new Date();
   if (automaticTheme) {
     const theme = themeForTime(now);
@@ -397,6 +399,9 @@ function updateLiveClockAndCountdown() {
   $('countdownToOff').textContent = !info.start ? '今日休息' : now < info.end ? formatCountdown(info.end - now) : '已下班';
   updateTodayCardDisplay(info, now);
   updateCompanion(now, info, next);
+}
+function resumeLiveUpdates() {
+  if (liveTimer === null) liveTimer = setInterval(updateLiveClockAndCountdown,1000);
 }
 
 function renderStats() {
@@ -668,7 +673,7 @@ function saveAsPreset() {
   $('presetName').value = '';
   presetNameError('');
   // Native prompt() may be suppressed by app WebViews without a UI delegate.
-  openDialog('presetModal',$('presetName'));
+  openDialog('presetModal');
 }
 function presetNameError(message) {
   $('presetError').textContent = message; $('presetError').hidden = !message;
@@ -799,60 +804,37 @@ function saveSettings() {
   toast(persisted ? '排班设置已保存' : '排班已更新，但浏览器暂时无法保存');
 }
 
-// Dialogs retain keyboard focus, close on Escape/backdrop, and never navigate the month behind them.
-function watchDialogViewport(overlay, content) {
-  const viewport = window.visualViewport;
-  let timer;
-  function update() {
-    if (activeDialog !== overlay.id) return;
-    const height = Math.round(viewport?.height || window.innerHeight);
-    const top = Math.max(0,Math.round(viewport?.offsetTop || 0));
-    if (!Number.isFinite(height) || height <= 0) return;
-    for (const [name,value] of [['--dialog-viewport-height',height],['--dialog-viewport-top',top]]) {
-      if (overlay.style.getPropertyValue(name) !== `${value}px`) overlay.style.setProperty(name,`${value}px`);
-    }
-    const focused = document.activeElement;
-    if (overlay.contains(focused) && focused.matches('input,textarea')) {
-      const field = focused.getBoundingClientRect(), bounds = content.getBoundingClientRect();
-      // Scroll only the form, never refocus or pan the page while settling the keyboard.
-      if (bounds.height > 0 && field.bottom > bounds.bottom - 12) content.scrollTop += field.bottom - bounds.bottom + 12;
-      else if (bounds.height > 0 && field.top < bounds.top + 12) content.scrollTop -= bounds.top + 12 - field.top;
-    }
-  }
-  // Keyboard animations can emit resize/scroll every frame. Only commit settled geometry.
-  function settled() { clearTimeout(timer); timer = setTimeout(update,160); }
-  overlay.classList.add('keyboard-dialog');
-  update();
-  window.addEventListener('resize',settled);
-  viewport?.addEventListener('resize',settled);
-  viewport?.addEventListener('scroll',settled);
-  return () => {
-    clearTimeout(timer);
-    window.removeEventListener('resize',settled);
-    viewport?.removeEventListener('resize',settled);
-    viewport?.removeEventListener('scroll',settled);
-    overlay.classList.remove('keyboard-dialog');
-    overlay.style.removeProperty('--dialog-viewport-height');
-    overlay.style.removeProperty('--dialog-viewport-top');
-  };
-}
-function openDialog(id, initialFocus = null) {
+// Input forms replace the painted page; the browser alone handles keyboard scrolling.
+function openDialog(id) {
   if (activeDialog) closeDialog(activeDialog);
-  dialogTrigger = document.activeElement; activeDialog = id; $(id).hidden = false;
-  document.querySelector('.main-container').inert = true; document.body.style.overflow = 'hidden';
-  const content = $(id).querySelector('[role="dialog"]');
+  dialogTrigger = document.activeElement; activeDialog = id;
+  clearInterval(liveTimer); liveTimer = null;
+  for (const animation of runningAnimations) animation.cancel();
+  runningAnimations.clear();
+  const overlay = $(id), content = overlay.querySelector('[role="dialog"]');
   const acceptsInput = !!content.querySelector('input,textarea');
-  if (acceptsInput) dialogViewportCleanup = watchDialogViewport($(id),content);
+  if (acceptsInput) {
+    inputViewScroll = {x:window.scrollX,y:window.scrollY};
+    overlay.classList.add('input-view');
+    document.documentElement.classList.add('input-view-open');
+  }
+  overlay.hidden = false;
+  document.querySelector('.main-container').inert = true;
+  document.body.style.overflow = acceptsInput ? '' : 'hidden';
   content.scrollTop = 0;
-  (initialFocus || content).focus({preventScroll:true});
-  // Moving a focused input while the keyboard pans the viewport can flicker in WebViews.
-  if (!acceptsInput) animateElement(content,[{opacity:0,transform:'translateY(10px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:280});
+  if (acceptsInput && (window.scrollX || window.scrollY)) window.scrollTo(0,0);
+  // Let the plain form paint before the user taps an input to open the keyboard.
+  content.focus({preventScroll:true});
 }
 function closeDialog(id) {
   $(id).hidden = true;
   if (activeDialog !== id) return;
-  dialogViewportCleanup?.(); dialogViewportCleanup = null;
+  $(id).classList.remove('input-view');
+  document.documentElement.classList.remove('input-view-open');
   activeDialog = null; document.querySelector('.main-container').inert = false; document.body.style.overflow = '';
+  updateLiveClockAndCountdown(); resumeLiveUpdates();
+  if (inputViewScroll && (window.scrollX !== inputViewScroll.x || window.scrollY !== inputViewScroll.y)) window.scrollTo(inputViewScroll.x,inputViewScroll.y);
+  inputViewScroll = null;
   if (dialogTrigger?.isConnected) dialogTrigger.focus({preventScroll:true}); dialogTrigger = null;
 }
 function dismissDialog(id) {
@@ -914,6 +896,6 @@ function init() {
   setTheme(automaticTheme ? themeForTime(now) : savedTheme === 'dark' ? 'dark' : 'light',false);
   loadPresets(); updateStorageNotice(); render();
   $('companion').hidden = false;
-  setInterval(updateLiveClockAndCountdown,1000);
+  resumeLiveUpdates();
 }
 init();
