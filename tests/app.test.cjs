@@ -127,13 +127,162 @@ test('dialogs trap focus, restore their opener and close with Escape',t => {
   assert.equal(d.querySelector('#settingsModal').hidden,true); assert.equal(d.activeElement,opener);
 });
 test('preset add/apply/delete preserves live settings and restores the saved configuration',t => {
-  const {w,d,read}=boot(t); w.prompt=()=> '测试方案'; w.saveAsPreset();
+  const {w,d,read}=boot(t); w.saveAsPreset();
+  d.querySelector('#presetName').value='测试方案';
+  d.querySelector('#presetForm').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
   assert.equal(d.querySelectorAll('.preset-group').length,1);
   assert.equal(d.querySelectorAll('.preset-btn button').length,0);
   const id=read('PRESETS[0].id'), before=read('JSON.stringify(captureCurrentConfig())');
   w.openSettings(); d.querySelector('#cyclePattern').value='休息'; w.saveSettings();
   w.applyPreset(id); assert.equal(read('JSON.stringify(captureCurrentConfig())'),before);
   w.deletePreset(id); assert.equal(read('CYCLE.length'),8); assert.equal(d.querySelectorAll('.preset-group').length,0);
+});
+test('saving presets works when native WebView prompts return null, throw or are missing',t => {
+  for (const prompt of [()=>null,()=>{throw new Error('Native dialogs are disabled');},undefined]) {
+    const {w,d,read}=boot(t);
+    w.prompt=prompt;w.confirm=()=>{throw new Error('Native confirmation is disabled');};
+    const opener=d.querySelector('[onclick="saveAsPreset()"]');opener.focus();read(opener.getAttribute('onclick'));
+    assert.equal(d.querySelector('#presetModal').hidden,false);
+    assert.equal(d.activeElement.id,'presetName');
+    assert.equal(d.querySelector('.main-container').inert,true);
+    assert.equal(read('PRESETS.length'),0);
+    d.querySelector('#presetName').value='应用内方案';
+    const event=new w.Event('submit',{bubbles:true,cancelable:true});
+    d.querySelector('#presetForm').dispatchEvent(event);
+    assert.equal(event.defaultPrevented,true);
+    assert.equal(d.querySelector('#presetModal').hidden,true);
+    assert.equal(read('PRESETS.length'),1);
+    assert.equal(JSON.parse(w.localStorage.getItem('qingzheng-presets'))[0].name,'应用内方案');
+    assert.equal(d.querySelector('#toast').textContent,'当前排班已保存为方案');
+    assert.equal(d.activeElement,opener);
+    assert.equal(w.location.href,'http://localhost/');
+  }
+});
+test('preset naming validates blank, long and duplicate names inside the dialog',t => {
+  const preset={id:'existing',name:'已有方案',anchor:'2026-04-18',cycle:['白班'],shiftDefs:{}};
+  const {w,d,read}=boot(t,{storage:{'qingzheng-presets':JSON.stringify([preset])}});
+  const previous=w.localStorage.getItem('qingzheng-presets');
+  w.saveAsPreset();
+  const input=d.querySelector('#presetName'),error=d.querySelector('#presetError');
+  for (const [name,expected] of [['   ','请填写'],['长'.repeat(41),'最多 40'],[' 已有方案 ','同名']]) {
+    input.value=name;w.submitPreset();
+    assert.equal(d.querySelector('#presetModal').hidden,false);
+    assert.equal(error.hidden,false);assert.ok(error.textContent.includes(expected));
+    assert.equal(input.getAttribute('aria-invalid'),'true');
+    assert.equal(d.activeElement,input);
+    assert.equal(read('PRESETS.length'),1);
+    assert.equal(w.localStorage.getItem('qingzheng-presets'),previous);
+    input.dispatchEvent(new w.Event('input',{bubbles:true}));
+    assert.equal(error.hidden,true);assert.equal(input.getAttribute('aria-invalid'),'false');
+  }
+  input.value='新'.repeat(40);w.submitPreset();
+  assert.equal(read('PRESETS.length'),2);
+  assert.equal(d.querySelector('#presetModal').hidden,true);
+});
+test('cancel, close, Escape and backdrop dismiss preset naming without modifying storage',t => {
+  for (const method of ['cancel','close','escape','backdrop']) {
+    const {w,d,read}=boot(t);
+    const opener=d.querySelector('[onclick="saveAsPreset()"]');opener.focus();read(opener.getAttribute('onclick'));
+    d.querySelector('#presetName').value='还没确认';
+    if (method==='cancel') read(d.querySelector('#presetModal .btn-group button[type="button"]').getAttribute('onclick'));
+    else if (method==='close') read(d.querySelector('[aria-label="关闭保存方案"]').getAttribute('onclick'));
+    else if (method==='escape') d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+    else d.querySelector('#presetModal').click();
+    assert.equal(d.querySelector('#presetModal').hidden,true,method);
+    assert.equal(read('PRESETS.length'),0,method);
+    assert.equal(w.localStorage.getItem('qingzheng-presets'),null,method);
+    assert.equal(d.querySelector('.main-container').inert,false,method);
+    assert.equal(d.body.style.overflow,'',method);
+    assert.equal(d.activeElement,opener,method);
+    read(opener.getAttribute('onclick'));assert.equal(d.querySelector('#presetName').value,'',method);
+    assert.equal(d.querySelector('#presetError').hidden,true,method);
+  }
+});
+test('repeated open and submit events neither clear an unfinished name nor save twice',t => {
+  const {w,d,read}=boot(t);w.saveAsPreset();
+  const input=d.querySelector('#presetName');input.value='  轮班方案  ';
+  w.saveAsPreset();assert.equal(input.value,'  轮班方案  ');
+  for (let i=0;i<2;i++) d.querySelector('#presetForm').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+  assert.equal(read('PRESETS.length'),1);
+  assert.equal(read('PRESETS[0].name'),'轮班方案');
+  assert.equal(d.querySelector('#presetModal').hidden,true);
+});
+test('unavailable or quota-blocked storage reports that a preset is only kept for the session',t => {
+  for (const blocked of [true,false]) {
+    const {w,d,read}=boot(t,{blocked});
+    if (!blocked) w.Storage.prototype.setItem=()=>{throw new Error('Quota exceeded');};
+    w.prompt=()=>{throw new Error('Prompt must not be used');};
+    w.saveAsPreset();d.querySelector('#presetName').value='临时方案';w.submitPreset();
+    assert.equal(read('PRESETS.length'),1);
+    assert.equal(d.querySelector('#presetModal').hidden,true);
+    assert.equal(d.querySelector('#storageNotice').hidden,false);
+    assert.equal(d.querySelector('#toast').textContent,'方案仅在本次打开期间有效');
+    assert.equal(d.querySelector('.preset-btn').textContent,'临时方案');
+    if (!blocked) assert.equal(w.localStorage.getItem('qingzheng-presets'),null);
+  }
+});
+test('preset names remain text in buttons and descriptions after form submission',t => {
+  const {w,d,read}=boot(t);const name='<img/src=x/onerror=alert(1)>';
+  w.saveAsPreset();d.querySelector('#presetName').value=name;w.submitPreset();
+  assert.equal(d.querySelector('.preset-btn').textContent,name);
+  assert.equal(d.querySelector('.preset-btn').title,`应用方案「${name}」`);
+  assert.equal(d.querySelectorAll('img').length,initialImageCount);
+  assert.equal(read('PRESETS[0].name'),name);
+});
+test('form-created presets keep the existing schema and restore the complete schedule on reload',t => {
+  const {w,d,read}=boot(t);
+  w.openSettings();d.querySelector('[data-shift="白班"] [data-field="startTime"]').value='07:15';w.saveSettings();
+  const original=read('JSON.stringify(captureCurrentConfig())');
+  w.saveAsPreset();d.querySelector('#presetName').value='早一点上班';w.submitPreset();
+  const saved=w.localStorage.getItem('qingzheng-presets');
+  w.commitConfig({anchor:'2026-10-16',cycle:['休息'],shiftDefs:{}});
+  const config=w.localStorage.getItem('qingzheng-config');
+  const reloaded=boot(t,{storage:{'qingzheng-presets':saved,'qingzheng-config':config}});
+  assert.equal(reloaded.read('PRESETS.length'),1);
+  reloaded.d.querySelector('.preset-btn').click();
+  assert.equal(reloaded.read('JSON.stringify(captureCurrentConfig())'),original);
+  assert.equal(reloaded.read('SHIFT_DEFS["白班"].startTime'),'07:15');
+});
+test('preset dialogs trap keyboard focus and block calendar shortcuts without breaking other dialogs',t => {
+  const {w,d,read}=boot(t);w.saveAsPreset();
+  const month=read('viewMonth'),first=d.querySelector('[aria-label="关闭保存方案"]'),last=d.querySelector('#presetSubmit');
+  last.focus();last.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}));
+  assert.equal(d.activeElement,first);
+  first.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true,cancelable:true}));
+  assert.equal(d.activeElement,last);
+  d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  assert.equal(read('viewMonth'),month);
+  d.querySelector('#presetName').focus();
+  d.querySelector('#presetName').dispatchEvent(new w.KeyboardEvent('keydown',{key:'t',bubbles:true,cancelable:true}));
+  assert.equal(read('viewMonth'),month);
+  w.closePresetDialog();w.openPicker();
+  d.querySelector('#pickerModal').click();assert.equal(d.querySelector('#pickerModal').hidden,true);
+  w.openSettings();d.querySelector('#settingsModal').click();
+  assert.equal(d.querySelector('#settingsModal').hidden,true);assert.equal(read('draftDefs'),null);
+});
+test('Enter during Chinese input composition does not submit an unfinished preset name',t => {
+  const {w,d,read}=boot(t);w.saveAsPreset();
+  const input=d.querySelector('#presetName');input.value='还在输入';
+  for (const options of [{isComposing:true},{keyCode:229}]) {
+    const event=new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true,...options});
+    input.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+  }
+  assert.equal(read('PRESETS.length'),0);assert.equal(d.querySelector('#presetModal').hidden,false);
+  const enter=new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true});
+  input.dispatchEvent(enter);assert.equal(enter.defaultPrevented,false);
+});
+test('preset naming supports reduced motion and theme changes while preserving the entered name',t => {
+  const {w,d,read}=boot(t,{reducedMotion:true});
+  w.nextMonth();const before=read('JSON.stringify(captureCurrentConfig())');
+  w.saveAsPreset();d.querySelector('#presetName').value='双主题方案';
+  for (const theme of ['dark','light']) {
+    w.setTheme(theme);assert.equal(d.querySelector('#presetName').value,'双主题方案');
+    assert.equal(d.querySelector('#presetModal').hidden,false);
+  }
+  w.submitPreset();
+  const saved=read('JSON.stringify(Core.normalizeConfig(PRESETS[0]))');
+  assert.equal(saved,before);
+  assert.equal(d.querySelector('#presetModal').hidden,true);
 });
 test('all shift types are included in monthly statistics, including the fourth and later shifts',t => {
   const {w,d}=boot(t,{storage:{'qingzheng-cycle':'["白班","夜班","中班","休息"]'}});

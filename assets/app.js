@@ -663,16 +663,39 @@ function syncActivePreset() {
   renderPresetBar();
 }
 function saveAsPreset() {
-  const input = prompt('给当前排班方案起个名字：');
-  if (!input?.trim()) return;
-  const name = input.trim();
-  if (name.length > 40) { toast('方案名称最多 40 个字符'); return; }
-  if (PRESETS.some(preset => preset.name === name)) { toast('已有同名方案，请换一个名字'); return; }
+  if (activeDialog === 'presetModal') return;
+  $('presetName').value = '';
+  presetNameError('');
+  // Native prompt() may be suppressed by app WebViews without a UI delegate.
+  openDialog('presetModal',$('presetName'));
+}
+function presetNameError(message) {
+  $('presetError').textContent = message; $('presetError').hidden = !message;
+  $('presetName').setAttribute('aria-invalid',String(!!message));
+}
+function closePresetDialog() {
+  closeDialog('presetModal');
+  $('presetName').value = ''; presetNameError('');
+}
+function submitPreset() {
+  if (activeDialog !== 'presetModal') return;
+  const name = $('presetName').value.trim();
+  let error = '';
+  if (!name) error = '请填写方案名称。';
+  else if (name.length > 40) error = '方案名称最多 40 个字符。';
+  else if (PRESETS.some(preset => preset.name === name)) error = '已有同名方案，请换一个名字。';
+  if (error) { presetNameError(error); $('presetName').focus(); return; }
   const preset = {...captureCurrentConfig(),id:`preset_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,name,createdAt:new Date().toISOString()};
   PRESETS.push(preset); activePresetId = preset.id;
   const saved = savePresets(); renderPresetBar();
+  closePresetDialog();
   toast(saved ? '当前排班已保存为方案' : '方案仅在本次打开期间有效');
 }
+$('presetForm').addEventListener('submit',event => { event.preventDefault(); submitPreset(); });
+$('presetName').addEventListener('input',() => presetNameError(''));
+$('presetName').addEventListener('keydown',event => {
+  if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) event.preventDefault();
+});
 function applyPreset(id) {
   const preset = PRESETS.find(value => value.id === id);
   if (!preset) return;
@@ -776,12 +799,12 @@ function saveSettings() {
 }
 
 // Dialogs retain keyboard focus, close on Escape/backdrop, and never navigate the month behind them.
-function openDialog(id) {
+function openDialog(id, initialFocus = null) {
   if (activeDialog) closeDialog(activeDialog);
   dialogTrigger = document.activeElement; activeDialog = id; $(id).hidden = false;
   document.querySelector('.main-container').inert = true; document.body.style.overflow = 'hidden';
   const content = $(id).querySelector('[role="dialog"]');
-  content.focus({preventScroll:true});
+  (initialFocus || content).focus({preventScroll:true});
   content.scrollTop = 0;
   animateElement(content,[{opacity:0,transform:'translateY(10px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:280});
 }
@@ -791,10 +814,15 @@ function closeDialog(id) {
   activeDialog = null; document.querySelector('.main-container').inert = false; document.body.style.overflow = '';
   if (dialogTrigger?.isConnected) dialogTrigger.focus(); dialogTrigger = null;
 }
-for (const id of ['settingsModal','pickerModal']) $(id).addEventListener('click',event => { if (event.target === $(id)) id === 'settingsModal' ? closeSettings() : closePicker(); });
+function dismissDialog(id) {
+  if (id === 'settingsModal') closeSettings();
+  else if (id === 'presetModal') closePresetDialog();
+  else closeDialog(id);
+}
+for (const id of ['settingsModal','pickerModal','presetModal']) $(id).addEventListener('click',event => { if (event.target === $(id)) dismissDialog(id); });
 document.addEventListener('keydown',event => {
   if (activeDialog) {
-    if (event.key === 'Escape') { event.preventDefault(); activeDialog === 'settingsModal' ? closeSettings() : closePicker(); }
+    if (event.key === 'Escape') { event.preventDefault(); dismissDialog(activeDialog); }
     if (event.key === 'Tab') {
       const nodes = [...$(activeDialog).querySelectorAll('button,input,textarea,select')]
         .filter(node => !node.disabled)
