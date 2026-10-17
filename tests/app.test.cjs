@@ -338,3 +338,146 @@ test('the coming week keeps both coinciding festivals and the shared illustratio
   w.closeDetail();
   assert.equal(d.querySelector('#upcomingPanel').hidden,false);
 });
+test('companions use the matching theme artwork and reset their copy on theme changes',t => {
+  const {w,d,setNow}=boot(t,{now:'2026-10-16T06:59:59'});
+  assert.equal(d.querySelector('#companion').hidden,false);
+  assert.equal(d.querySelector('#companionDay').hidden,true);
+  assert.equal(d.querySelector('#companionNight').hidden,false);
+  assert.equal(d.querySelector('#companionName').textContent,'大肥鱼');
+  d.querySelector('#companionCharacter').click();
+  assert.equal(d.querySelector('#companion').dataset.message,'quip');
+  setNow('2026-10-16T07:00:00');w.updateLiveClockAndCountdown();
+  assert.equal(d.querySelector('#companionDay').hidden,false);
+  assert.equal(d.querySelector('#companionNight').hidden,true);
+  assert.equal(d.querySelector('#companionName').textContent,'大肥龙');
+  assert.equal(d.querySelector('#companion').dataset.message,'status');
+  assert.ok(d.querySelector('#companionCharacter').getAttribute('aria-label').includes('大肥龙'));
+  d.querySelector('#themeToggle').click();
+  assert.equal(d.querySelector('#companionName').textContent,'大肥鱼');
+});
+test('companion status follows the exact start and end of a shift, highlighting only the time',t => {
+  const {w,d,setNow}=boot(t,{now:'2026-04-18T07:59:30'});
+  const message=d.querySelector('#companionMessage');
+  assert.ok(message.textContent.includes('距离下次上班'));
+  assert.equal(message.querySelector('strong').textContent,'不到1分钟');
+  setNow('2026-04-18T08:00:00');w.updateLiveClockAndCountdown();
+  assert.ok(message.textContent.includes('离下班还有'));
+  assert.equal(message.querySelector('.companion-time').textContent,'12小时');
+  setNow('2026-04-18T19:59:59');w.updateLiveClockAndCountdown();
+  assert.equal(message.querySelector('strong').textContent,'不到1分钟');
+  setNow('2026-04-18T20:00:00');w.updateLiveClockAndCountdown();
+  assert.ok(message.textContent.includes('距离下次上班'));
+  assert.equal(message.querySelector('strong').textContent,'1天');
+  assert.equal(d.querySelector('#companionAnnouncement').textContent,'');
+});
+test('overnight companion copy remains on the previous work shift until its real end',t => {
+  const {w,d,setNow}=boot(t,{now:'2026-04-19T23:59:59',storage:{'qingzheng-theme':'light'}});
+  const message=d.querySelector('#companionMessage');
+  assert.ok(message.textContent.includes('离下班还有'));
+  setNow('2026-04-20T00:00:00');w.updateLiveClockAndCountdown();
+  assert.ok(message.textContent.includes('离下班还有'));
+  assert.equal(message.querySelector('strong').textContent,'8小时');
+  setNow('2026-04-20T08:00:00');w.updateLiveClockAndCountdown();
+  assert.ok(message.textContent.includes('距离下次上班'));
+  assert.equal(message.querySelector('strong').textContent,'1天');
+});
+test('clicks alternate a shuffled quip bag with one schedule fact without immediate repetition',t => {
+  const {d}=boot(t);
+  const button=d.querySelector('#companionCharacter'),message=d.querySelector('#companionMessage');
+  const quips=[];let previous=message.textContent;
+  for (let i=0;i<26;i++) {
+    button.click();
+    assert.notEqual(message.textContent,previous);
+    assert.equal(d.querySelector('#companion').dataset.message === 'quip',i%2===0);
+    assert.ok(message.querySelectorAll('strong').length<=1);
+    assert.ok(d.querySelector('#companionAnnouncement').textContent.includes(message.textContent));
+    if (i%2===0) quips.push(message.textContent);
+    previous=message.textContent;
+  }
+  assert.equal(new Set(quips.slice(0,6)).size,6);
+  assert.equal(new Set(quips.slice(6,12)).size,6);
+  assert.notEqual(quips[5],quips[6]);
+});
+test('a chosen live fact refreshes quietly, while quips do not rotate on the clock',t => {
+  const {w,d,setNow}=boot(t,{now:'2026-04-18T09:00:00'});
+  const message=d.querySelector('#companionMessage');
+  const original=message.firstChild;
+  setNow('2026-04-18T09:00:01');w.updateLiveClockAndCountdown();
+  assert.notEqual(message.firstChild,original);
+  const sameMinute=message.firstChild;
+  setNow('2026-04-18T09:00:02');w.updateLiveClockAndCountdown();
+  assert.equal(message.firstChild,sameMinute);
+  d.querySelector('#companionCharacter').click();
+  const quip=message.textContent,announcement=d.querySelector('#companionAnnouncement').textContent;
+  setNow('2026-04-18T10:05:00');w.updateLiveClockAndCountdown();
+  assert.equal(message.textContent,quip);
+  assert.equal(d.querySelector('#companionAnnouncement').textContent,announcement);
+});
+test('collapsing hides only the bubble; character activation restores it and refreshes copy',t => {
+  const {d}=boot(t);
+  const toggle=d.querySelector('#companionToggle'),bubble=d.querySelector('#companionBubble');
+  toggle.click();
+  assert.equal(bubble.hidden,true);
+  assert.equal(toggle.getAttribute('aria-expanded'),'false');
+  assert.equal(d.querySelector('#companion').classList.contains('is-collapsed'),true);
+  const button=d.querySelector('#companionCharacter');button.focus();button.click();
+  assert.equal(bubble.hidden,false);
+  assert.equal(toggle.getAttribute('aria-expanded'),'true');
+  assert.equal(d.querySelector('#companion').dataset.message,'quip');
+  assert.equal(d.activeElement,button);
+});
+test('companion facts handle all-rest, no-rest and long cycles using the actual saved config',t => {
+  const {w,d,read}=boot(t,{now:'2026-10-16T12:00:00'});
+  w.commitConfig({anchor:'2026-10-16',cycle:['休息'],shiftDefs:{}});
+  assert.ok(d.querySelector('#companionMessage').textContent.includes('没有工作班'));
+  assert.equal(d.querySelector('#companionMessage strong'),null);
+  w.commitConfig({anchor:'2026-10-16',cycle:[...Array(40).fill('休息'),'白班'],shiftDefs:{}});
+  assert.equal(d.querySelector('#companionMessage strong').textContent,'39天21小时');
+  w.commitConfig({anchor:'2026-10-16',cycle:['白班'],shiftDefs:{}});
+  assert.equal(read('companionFacts(new Date(),getEffectiveShiftInfo(),getNextWorkCountdown(new Date())).some(fact=>fact.id === "rest")'),false);
+  assert.ok(d.querySelector('#companionMessage').textContent.includes('下班'));
+});
+test('companion tomorrow facts use real civil dates at midnight and treat custom names as text',t => {
+  const name='<img/src=x/onerror=alert(1)>';
+  const {w,d,setNow}=boot(t,{now:'2026-10-16T23:59:59',storage:{'qingzheng-theme':'light'}});
+  w.commitConfig({anchor:'2026-10-16',cycle:['休息',name,'白班'],shiftDefs:{}});
+  d.querySelector('#companionCharacter').click();d.querySelector('#companionCharacter').click();
+  const message=d.querySelector('#companionMessage');
+  assert.ok(message.textContent.includes(name));
+  assert.equal(message.querySelector('strong').textContent,'09:00');
+  assert.equal(message.querySelector('img'),null);
+  setNow('2026-10-17T00:00:00');w.updateLiveClockAndCountdown();
+  assert.ok(message.textContent.includes('白班'));
+  assert.equal(message.textContent.includes(name),false);
+  assert.equal(d.querySelectorAll('img').length,initialImageCount);
+});
+test('the last overnight shift is not mistaken for a full rest day by the companion',t => {
+  const {w,d,setNow}=boot(t,{now:'2026-04-20T07:00:00',storage:{'qingzheng-theme':'light'}});
+  for (let i=0;i<4;i++) d.querySelector('#companionCharacter').click();
+  assert.equal(d.querySelector('#companion').dataset.message,'rest');
+  assert.ok(d.querySelector('#companionMessage').textContent.includes('要等这班结束'));
+  setNow('2026-04-20T08:00:00');w.updateLiveClockAndCountdown();
+  assert.ok(d.querySelector('#companionMessage').textContent.includes('今天的排班是休息'));
+  assert.equal(d.querySelector('#companionMessage strong'),null);
+});
+test('reduced-motion users can refresh and collapse companions without scripted animation',t => {
+  const {d}=boot(t,{reducedMotion:true});
+  for (let i=0;i<4;i++) d.querySelector('#companionCharacter').click();
+  d.querySelector('#companionToggle').click();
+  d.querySelector('#companionCharacter').click();
+  assert.equal(d.querySelector('#companionBubble').hidden,false);
+  assert.ok(d.querySelector('#companionMessage').textContent);
+});
+test('character taps produce a finite bounce, sparkles and copy transition',t => {
+  const {w,d}=boot(t,{reducedMotion:false});
+  const animations=[];
+  w.Element.prototype.animate=function(frames,options) {
+    animations.push({element:this,frames,options});
+    return {finished:Promise.resolve(),cancel(){}};
+  };
+  d.querySelector('#companionCharacter').click();
+  assert.equal(animations.filter(item=>item.element.id==='companionCharacter').length,1);
+  assert.equal(animations.filter(item=>item.element.classList.contains('companion-spark')).length,2);
+  assert.equal(animations.filter(item=>item.element.id==='companionMessage').length,1);
+  assert.ok(animations.every(item=>item.options.duration<=520 && !item.options.iterations));
+});

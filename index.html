@@ -17,7 +17,7 @@
     })();
   </script>
   <link rel="icon" href="avatar.png">
-  <link rel="stylesheet" href="assets/styles.css"><link rel="stylesheet" href="assets/themes.css"><link rel="stylesheet" href="assets/festivals.css">
+  <link rel="stylesheet" href="assets/styles.css"><link rel="stylesheet" href="assets/themes.css"><link rel="stylesheet" href="assets/festivals.css"><link rel="stylesheet" href="assets/companion.css">
   <script src="assets/schedule-core.js" defer=""></script>
   <script src="assets/calendar-data.js" defer=""></script>
   <script src="assets/app.js" defer=""></script>
@@ -186,6 +186,18 @@
       </section>
 
       <div class="workspace-grid">
+        <section class="companion" id="companion" aria-label="排班小陪伴" hidden>
+          <div class="companion-bubble" id="companionBubble">
+            <p class="companion-heading"><span class="companion-sigil" aria-hidden="true">◇</span><span id="companionName">大肥龙</span><span class="companion-heading-note">的一点碎碎念</span></p>
+            <p class="companion-message" id="companionMessage"></p>
+          </div>
+          <button class="companion-character" id="companionCharacter" type="button" aria-label="戳戳大肥龙，换一句话" aria-describedby="companionMessage" title="戳戳我，换一句话">
+            <span class="companion-portrait"><img id="companionDay" src="assets/chibi-day.png" alt="" width="1052" height="1052" decoding="async"><img id="companionNight" src="assets/chibi-night.png" alt="" width="610" height="610" decoding="async" hidden></span>
+            <span class="companion-spark companion-spark-one" aria-hidden="true">✧</span><span class="companion-spark companion-spark-two" aria-hidden="true">✦</span>
+          </button>
+          <div class="companion-foot"><span class="companion-hint">戳戳我 · 换一句</span><button class="companion-toggle" id="companionToggle" type="button" aria-controls="companionBubble" aria-expanded="true" aria-label="收起碎碎念">收起 <span aria-hidden="true">⌃</span></button></div>
+          <span class="companion-announcement" id="companionAnnouncement" role="status" aria-live="polite" aria-atomic="true"></span>
+        </section>
         <section class="calendar-section panel enter-stage" id="calendarSection" aria-label="月度排班日历"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div>
           <div class="calendar-heading"><div><p class="eyebrow calendar-eyebrow">月度安排 <span class="heading-rule"></span></p><div class="month-navigation"><button class="month-title" id="monthTitle" onclick="openPicker()" aria-haspopup="dialog" title="选择年月"></button><div class="month-arrows"><button class="nav-btn" id="prevBtn" onclick="prevMonth()" aria-label="上个月">‹</button><button class="nav-btn" id="nextBtn" onclick="nextMonth()" aria-label="下个月">›</button></div></div></div><div class="calendar-actions"><span class="month-meta" id="monthMeta"></span><button class="button today-button" id="backToToday" title="回到今天 · T"><span class="today-button-dot" aria-hidden="true"></span> 今天</button></div></div>
           <div class="calendar-subhead"><div class="legend" id="legendContainer" aria-label="班次图例"></div><span class="calendar-tip">留一点时间，给自己。</span></div>
