@@ -55,7 +55,13 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     const firstDow = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
     const daysInMonth = new Date(viewYear,viewMonth + 1,0).getDate();
     $('daysGrid').style.setProperty('--week-rows',Math.ceil((firstDow + daysInMonth) / 7));
-    for (let i = 0; i < firstDow; i++) { const empty = mk('div',{cls:'day-cell empty'}); empty.setAttribute('aria-hidden','true'); fragment.append(empty); }
+    function appendAdjacent(date) {
+      const empty = mk('div',{cls:'day-cell empty'});
+      empty.setAttribute('aria-hidden','true');
+      empty.append(mk('span',{cls:'day-num',text:date.getDate()}),mk('span',{cls:'adjacent-month',text:`${date.getMonth()+1}月`}));
+      fragment.append(empty);
+    }
+    for (let i = 0; i < firstDow; i++) appendAdjacent(new Date(viewYear,viewMonth,1 - firstDow + i));
     for (let d = 1; d <= new Date(viewYear, viewMonth + 1, 0).getDate(); d++) {
       const date = new Date(viewYear, viewMonth, d), name = getShift(date), def = getShiftDef(name);
       const today = isSameDay(date, new Date()), selected = selectedDate && isSameDay(date, selectedDate);
@@ -67,13 +73,14 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       if (today) cell.setAttribute('aria-current','date');
       const heading = mk('span',{cls:'day-heading'});
       heading.append(mk('span',{cls:'day-num',text:d}));
+      if (today) heading.append(mk('span',{cls:'today-label',text:'今'}));
       if (festival) {
         cell.classList.add('is-festival');
         cell.dataset.festival = festival;
         const parts = festivalParts(festival);
         cell.classList.toggle('festival-combined',parts.length > 1);
         if (parts.length) cell.dataset.festivalPalette = FESTIVAL_ART[parts[0]].palette;
-        heading.append(makeFestivalArt(festival));
+        cell.append(makeFestivalArt(festival));
       }
       const label = mk('span', {cls:'day-shift'});
       label.append(mk('span',{cls:`shift-dot ${def.cssClass}`}),mk('span',{cls:'day-shift-label',text:name}));
@@ -81,6 +88,8 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       if (festival) cell.append(mk('span',{cls:'holiday-badge',text:festival}));
       fragment.append(cell);
     }
+    const trailingDays = (7 - (firstDow + daysInMonth) % 7) % 7;
+    for (let i = 1; i <= trailingDays; i++) appendAdjacent(new Date(viewYear,viewMonth + 1,i));
     $('daysGrid').replaceChildren(fragment);
     const monthKey = viewYear * 12 + viewMonth;
     if (lastRenderedMonth !== null && lastRenderedMonth !== monthKey) {
@@ -227,6 +236,61 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   function prevMonth() { navigateMonth(viewYear,viewMonth - 1); }
   function nextMonth() { navigateMonth(viewYear,viewMonth + 1); }
   function backToToday() { const today = new Date(); navigateMonth(today.getFullYear(),today.getMonth()); showDetail(today); }
+
+  // Let the browser own vertical scrolling and pinch zoom; only a deliberate
+  // one-finger horizontal gesture on the month grid changes the month.
+  const calendar = document.querySelector('.calendar');
+  const pointers = new Set();
+  let gesture = null, suppressClickUntil = 0;
+  const gestureTime = () => window.performance.now();
+  calendar.addEventListener('pointerdown',event => {
+    if (!['touch','pen'].includes(event.pointerType) || ui.activeDialog) return;
+    pointers.add(event.pointerId);
+    if (pointers.size !== 1 || event.isPrimary === false) { gesture = null; return; }
+    suppressClickUntil = 0;
+    gesture = {id:event.pointerId,x:event.clientX,y:event.clientY,start:gestureTime(),axis:null};
+  },{passive:true});
+  window.addEventListener('pointerdown',event => {
+    if (gesture && gesture.id !== event.pointerId && ['touch','pen'].includes(event.pointerType)) {
+      pointers.add(event.pointerId); gesture = null;
+    }
+  },{passive:true});
+  window.addEventListener('pointermove',event => {
+    if (!gesture || gesture.id !== event.pointerId) return;
+    const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+    if (!gesture.axis && Math.max(Math.abs(dx),Math.abs(dy)) >= 10) {
+      if (Math.abs(dx) <= Math.abs(dy) * 1.2) { gesture = null; return; }
+      gesture.axis = 'horizontal';
+      calendar.setPointerCapture?.(event.pointerId);
+    }
+  },{passive:true});
+  window.addEventListener('pointerup',event => {
+    pointers.delete(event.pointerId);
+    if (!gesture || gesture.id !== event.pointerId) return;
+    const current = gesture;
+    gesture = null;
+    const dx = event.clientX - current.x, dy = event.clientY - current.y;
+    const horizontal = current.axis === 'horizontal' || (Math.abs(dx) >= 10 && Math.abs(dx) > Math.abs(dy) * 1.2);
+    if (!horizontal) return;
+    // A swipe must never turn into a click on a date, even at a year boundary.
+    suppressClickUntil = gestureTime() + 450;
+    const threshold = Math.max(42,Math.min(72,calendar.clientWidth * .14));
+    if (ui.activeDialog || gestureTime() - current.start > 1100 || Math.abs(dx) < threshold || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    if (dx < 0) nextMonth(); else prevMonth();
+  },{passive:true});
+  window.addEventListener('pointercancel',event => {
+    pointers.delete(event.pointerId);
+    if (gesture?.id === event.pointerId) gesture = null;
+  },{passive:true});
+  calendar.addEventListener('click',event => {
+    if (event.detail !== 0 && gestureTime() < suppressClickUntil) {
+      event.preventDefault(); event.stopImmediatePropagation();
+    }
+  },true);
+  function resetGesture() { gesture = null; pointers.clear(); }
+  window.addEventListener('blur',resetGesture);
+  document.addEventListener('visibilitychange',resetGesture);
+
   function openPicker() { pickerYear = viewYear; renderPicker(); openDialog('pickerModal'); }
   function closePicker() { closeDialog('pickerModal'); }
   function renderPicker() {

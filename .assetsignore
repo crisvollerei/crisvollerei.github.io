@@ -4,7 +4,6 @@ tests/**
 scripts/**
 node_modules/**
 README.md
-IMPLEMENTATION_REVIEW.md
 DESIGN_NOTES.md
 package*.json
 *.mjs

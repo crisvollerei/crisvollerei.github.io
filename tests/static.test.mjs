@@ -31,3 +31,50 @@ test('small optimized images replace large originals while source artwork is pre
   }
   for (const tag of html.matchAll(/<img[^>]+data-image-theme[^>]*>/g)) assert.doesNotMatch(tag[0],/\ssrc=/);
 });
+test('orbit travelers use the exact visible path inside the same tilted SVG plane',() => {
+  const css = fs.readFileSync(path.join(root,'assets/themes.css'),'utf8');
+  const rings = [...html.matchAll(/<g class="orbit-ring ([^"]+)" transform="([^"]+)">\s*<path class="orbit-track" d="([^"]+)"\/>/g)];
+  assert.equal(rings.length,4);
+  for (const [,name,transform,geometry] of rings) {
+    const motionPath = css.match(new RegExp(`\\.${name} \\{ --orbit-path: path\\('([^']+)'\\)`));
+    assert.equal(motionPath?.[1],geometry,name);
+    assert.match(transform,/^translate\([\d ]+\)( rotate\(-?\d+\))?$/);
+  }
+  assert.equal([...html.matchAll(/class="orbit-marker /g)].length,10);
+  assert.doesNotMatch(html,/class="scene-orbit|class="scene-particle|class="art-spark/);
+  assert.doesNotMatch(html,/<[^>]+\sstyle=/);
+  assert.match(css,/offset-anchor: 0px 0px; offset-rotate: 0deg/);
+});
+test('every orbit diamond spins its centered glyph without changing the travel path',() => {
+  const css = fs.readFileSync(path.join(root,'assets/motion.css'),'utf8');
+  const theme = fs.readFileSync(path.join(root,'assets/themes.css'),'utf8');
+  const diamonds = [...html.matchAll(/<g class="orbit-marker marker-diamond[^\"]*"><path class="orbit-glyph" d="([^\"]+)"\/>/g)];
+  assert.equal(diamonds.length,4);
+  for (const [,shape] of diamonds) assert.match(shape,/^M0-/);
+  assert.match(theme,/\.marker-diamond \.orbit-glyph \{ transform-box: view-box; transform-origin: 0px 0px;/);
+  assert.match(css,/@keyframes facet-spin\s*\{\s*from \{ transform: rotate\(0turn\); \}\s*to \{ transform: rotate\(1turn\); \}/);
+  assert.match(css,/\.marker-diamond \.orbit-glyph \{ animation: facet-spin[^}]+paused;/);
+  assert.match(css,/\.ambient-visible \.marker-diamond \.orbit-glyph \{ animation-play-state: running;/);
+  assert.match(css,/animation-delay: calc\(var\(--orbit-phase\) - var\(--orbit-duration\) \* var\(--marker-gap,0\)\)/);
+});
+test('responsive columns share height and the companion note does not stretch into a banner',() => {
+  const css = fs.readFileSync(path.join(root,'assets/companion.css'),'utf8');
+  assert.match(css,/@media \(min-width: 961px\)/);
+  assert.match(css,/\.workspace-grid > \.calendar-section \{ align-self: stretch; display: flex; flex-direction: column;/);
+  assert.match(css,/\.calendar-section \.days-grid \{ flex: 1;/);
+  assert.match(css,/\.workspace-grid > \.sidebar \{ align-self: stretch; position: static;/);
+  assert.match(css,/@media \(min-width: 641px\) and \(max-width: 960px\)/);
+  assert.match(css,/\.sidebar \{ align-items: stretch;/);
+  assert.match(css,/\.sidebar \.stats-container \{ display: flex; flex-direction: column;/);
+  assert.match(css,/width: min\(100%, 420px\)/);
+  assert.doesNotMatch(css,/width: min\(100%, 620px\)/);
+});
+test('orbital motion stays CSS-only and respects visibility, dialogs and reduced motion',() => {
+  const css = fs.readFileSync(path.join(root,'assets/motion.css'),'utf8');
+  assert.match(css,/@keyframes track-travel\s*\{\s*from \{ offset-distance: 0%; \}\s*to \{ offset-distance: 100%; \}/);
+  assert.match(css,/\.ambient-visible \.orbit-marker/);
+  assert.match(css,/\.main-container\[inert\] \*/);
+  assert.match(css,/@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css,/@supports not \(offset-path:/);
+  assert.doesNotMatch(html,/<animateMotion|<animateTransform|<animate\s/);
+});

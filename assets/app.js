@@ -1,9 +1,9 @@
 import { createStorage } from './storage.js?v=12c75b2d9435';
-import { createUI } from './ui.js?v=6638a08447c1';
+import { createUI } from './ui.js?v=43fe521d5ef9';
 import { createSchedule } from './schedule.js?v=28657352ebfd';
 import { createFestivals } from './festivals.js?v=4d4197fe0e0a';
-import { createViews } from './views.js?v=8392649d0b72';
-import { createCompanion } from './companion.js?v=7c5633b35e8c';
+import { createViews } from './views.js?v=67537a80e905';
+import { createCompanion } from './companion.js?v=55425bc50cdc';
 import { createSettings } from './settings.js?v=0e27e2b7e132';
 export function createApp(window) {
   const { document, Date } = window;
@@ -102,7 +102,10 @@ export function createApp(window) {
   }
   $('themeToggle').addEventListener('click',() => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
   $('backToToday').addEventListener('click',views.backToToday);
-  document.addEventListener('visibilitychange',() => { if (!document.hidden) updateLiveClockAndCountdown(); });
+  document.addEventListener('visibilitychange',() => {
+    document.documentElement.classList.toggle('page-hidden',document.hidden);
+    if (!document.hidden) updateLiveClockAndCountdown();
+  });
   document.addEventListener('keydown',event => {
     if (ui.activeDialog || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest?.('input,textarea,select,[contenteditable="true"]')) return;
     if (event.key === 'ArrowLeft') { event.preventDefault(); views.prevMonth(); }
@@ -119,6 +122,11 @@ export function createApp(window) {
     setTheme(automaticTheme ? themeForTime(now) : savedTheme === 'dark' ? 'dark' : 'light',false);
     settings.loadPresets(); storage.updateNotice(); render();
     $('companion').hidden = false;
+    document.documentElement.classList.toggle('page-hidden',document.hidden);
+    ui.observeAmbientMotion();
+    document.querySelectorAll('.workspace-intro,.enter-stage').forEach((element,index) => {
+      reveal(element,{duration:450,delay:Math.min(index,5)*45,fill:'backwards'});
+    });
     resumeLiveUpdates();
   }
   ui.setLifecycle({pause() { window.clearInterval(liveTimer); liveTimer = null; }, resume() { updateLiveClockAndCountdown(); resumeLiveUpdates(); }});

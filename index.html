@@ -7,8 +7,8 @@
   <title>清蒸排班 · 把日子排成喜欢的样子</title>
   <script src="assets/theme-init.js?v=10d10acba7f4"></script>
   <link rel="icon" type="image/png" href="assets/favicon.png?v=0add43154703">
-  <link rel="stylesheet" href="assets/styles.css?v=10318545fa1e"><link rel="stylesheet" href="assets/themes.css?v=29f1f74ba5e0"><link rel="stylesheet" href="assets/festivals.css?v=f014787afa76"><link rel="stylesheet" href="assets/companion.css?v=427c392451fd">
-  <script type="module" src="assets/main.js?v=c795987b2813"></script>
+  <link rel="stylesheet" href="assets/styles.css?v=10318545fa1e"><link rel="stylesheet" href="assets/themes.css?v=9316b6a273dc"><link rel="stylesheet" href="assets/festivals.css?v=c3bdb3dbc15b"><link rel="stylesheet" href="assets/companion.css?v=15ff1a5d31cd"><link rel="stylesheet" href="assets/motion.css?v=7934090508d8">
+  <script type="module" src="assets/main.js?v=8122fca70678"></script>
 </head>
 <body><div class="world-ornaments" aria-hidden="true"><svg class="world-wing ornament-day" viewBox="0 0 300 120" focusable="false"><use href="#silver-wings"></use></svg><svg class="world-tide ornament-night" viewBox="0 0 640 100" preserveAspectRatio="none" focusable="false"><use href="#night-tide"></use></svg><svg class="world-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><svg class="theme-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
   <defs>
@@ -161,12 +161,51 @@
     <main>
       <section class="workspace-intro" aria-labelledby="pageTitle">
         <div class="intro-copy"><p class="eyebrow"><span class="theme-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><span class="theme-mood" id="themeMood">银昼</span><span class="intro-divider" aria-hidden="true"></span>工作有节奏，生活有期待</p><h1 id="pageTitle">把日子，<br><span>排成喜欢的样子。</span></h1><p class="intro-subtitle">每一次出发与休息，都值得温柔以待。</p><div class="intro-flourish" aria-hidden="true"><span></span><span class="flourish-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><span></span></div></div>
-        <div class="intro-art" aria-hidden="true"><div class="scene-signature"><span class="scene-day"><strong>银翼手札</strong><small>THE SILVER ATELIER</small></span><span class="scene-night"><strong>深蓝夜航</strong><small>A TIDAL NOCTURNE</small></span></div><span class="scene-orbit"></span><span class="scene-particle particle-one"></span><span class="scene-particle particle-two"></span><span class="scene-particle particle-three"></span><span class="art-halo"></span><svg class="hero-wing ornament-day" viewBox="0 0 300 120" focusable="false"><use href="#silver-wings"></use></svg><svg class="hero-cameo ornament-night" viewBox="0 0 80 80" focusable="false"><use href="#night-cameo"></use></svg><svg class="hero-tide ornament-night" viewBox="0 0 640 100" preserveAspectRatio="none" focusable="false"><use href="#night-tide"></use></svg><span class="art-spark art-spark-one">✧</span><span class="art-spark art-spark-two">✦</span><img class="character character-day" data-src="assets/character-day.webp?v=546c6e1cd47e" data-image-theme="light" alt="" width="503" height="900" decoding="async"><img class="character character-night" data-src="assets/character-night.webp?v=49b52af5eb41" data-image-theme="dark" alt="" width="506" height="900" decoding="async"><span class="art-caption">日常 · 也有一点魔法</span></div>
+        <svg class="scene-tracks" viewBox="0 0 900 360" width="900" height="360" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="track-edge"><stop stop-color="white" stop-opacity="0"/><stop offset=".32" stop-color="white"/></linearGradient>
+            <linearGradient id="track-horizon" x2="0" y2="1"><stop offset=".72" stop-color="white"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient>
+            <mask id="track-fade"><path fill="url(#track-edge)" d="M0 0h900v360H0z"/></mask>
+            <mask id="track-bottom"><path fill="url(#track-horizon)" d="M0 0h900v360H0z"/></mask>
+          </defs>
+          <g mask="url(#track-fade)"><g mask="url(#track-bottom)">
+            <g class="scene-day">
+              <g class="orbit-ring silver-primary" transform="translate(666 116) rotate(-27)">
+                <path class="orbit-track" d="M184 0a184 101 0 1 1-368 0 184 101 0 1 1 368 0Z"/>
+                <g class="orbit-marker marker-diamond"><path class="orbit-glyph" d="M0-7 4 0 0 7-4 0Z"/></g>
+                <g class="orbit-marker marker-satellite"><circle r="2.6"/></g>
+              </g>
+              <g class="orbit-ring silver-crossing" transform="translate(650 116) rotate(31)">
+                <path class="orbit-track" d="M204 0a204 65 0 1 1-408 0 204 65 0 1 1 408 0Z"/>
+                <g class="orbit-marker marker-star"><path d="m0-10 2.4 7.6L10 0 2.4 2.4 0 10-2.4 2.4-10 0l7.6-2.4Z"/></g>
+                <g class="orbit-marker marker-satellite marker-secondary"><circle r="2"/></g>
+                <g class="orbit-marker marker-diamond marker-fine marker-tertiary"><path class="orbit-glyph" d="M0-5 2.8 0 0 5-2.8 0Z"/></g>
+              </g>
+              <path class="orbit-guide" d="M372 282C387 149 491 59 607 54S824 105 859 229"/>
+            </g>
+            <g class="scene-night">
+              <circle class="orbit-guide" cx="540" cy="125" r="134"/>
+              <g class="orbit-ring tidal-primary" transform="translate(540 125)">
+                <path class="orbit-track" d="M123 0a123 123 0 1 1-246 0 123 123 0 1 1 246 0Z"/>
+                <g class="orbit-marker marker-diamond"><path class="orbit-glyph" d="M0-10 4.5 0 0 10-4.5 0Z"/></g>
+                <g class="orbit-marker marker-satellite marker-secondary"><circle r="2.4"/></g>
+                <g class="orbit-marker marker-diamond marker-fine marker-tertiary"><path class="orbit-glyph" d="M0-6 3 0 0 6-3 0Z"/></g>
+              </g>
+              <g class="orbit-ring tidal-crossing" transform="translate(540 125) rotate(-29)">
+                <path class="orbit-track" d="M169 0a169 70 0 1 1-338 0 169 70 0 1 1 338 0Z"/>
+                <g class="orbit-marker marker-star"><path d="m0-10 2.4 7.6L10 0 2.4 2.4 0 10-2.4 2.4-10 0l7.6-2.4Z"/></g>
+                <g class="orbit-marker marker-satellite"><circle r="3.6"/></g>
+              </g>
+              <path class="orbit-ticks" d="M397 125h20m246 0h20M439 24l12 12m178 178 12 12M439 226l12-12M629 36l12-12"/>
+            </g>
+          </g></g>
+        </svg>
+        <div class="intro-art" aria-hidden="true"><div class="scene-signature"><span class="scene-day"><strong>银翼手札</strong><small>THE SILVER ATELIER</small></span><span class="scene-night"><strong>深蓝夜航</strong><small>A TIDAL NOCTURNE</small></span></div><span class="art-halo"></span><img class="character character-day" data-src="assets/character-day.webp?v=546c6e1cd47e" data-image-theme="light" alt="" width="503" height="900" decoding="async"><img class="character character-night" data-src="assets/character-night.webp?v=49b52af5eb41" data-image-theme="dark" alt="" width="506" height="900" decoding="async"><span class="art-caption">日常 · 也有一点魔法</span></div>
         <div class="schedule-toolbar" aria-label="排班方案"><div class="preset-area"><span class="toolbar-label">当前方案</span><div class="preset-bar" id="presetBar"></div></div><div class="toolbar-actions"><button class="button button-secondary" data-action="saveAsPreset" title="保存当前排班方案"><span aria-hidden="true">＋</span> 保存方案</button><button class="button button-primary" data-action="openSettings" aria-label="打开排班设置"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="8" cy="6" r="2"></circle><circle cx="16" cy="12" r="2"></circle><circle cx="10" cy="18" r="2"></circle></svg> 编辑排班</button></div></div>
       </section>
       <p class="storage-notice" id="storageNotice" role="status" hidden=""></p>
 
-      <section class="today-card enter-stage" aria-label="今日班次概览"><div class="festival-notice today-festival" id="todayFestival" hidden></div>
+      <section class="today-card enter-stage" aria-label="今日班次概览"><span class="folio-motes" aria-hidden="true"><span class="folio-mote"></span><span class="folio-mote"></span></span><div class="festival-notice today-festival" id="todayFestival" hidden></div>
         <div class="today-identity"><div class="card-heading"><span class="briefing-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><h2 id="todayLabel">今天的节奏</h2><span class="today-date" id="todayDate"></span></div><div class="today-shift" id="todayShift"></div><p class="shift-time" id="todayShiftTime"></p></div>
         <div class="today-cycle-block"><div class="today-cycle">周期进度 <span><b id="todayCycle"></b><span class="cycle-divider"> / </span><b id="cycleLength"></b> 天</span></div><div class="cycle-progress" role="progressbar" aria-label="排班周期进度" aria-valuemin="0" aria-valuemax="100" id="cycleProgress"><div class="progress-bar" id="progressBar"><span class="progress-charm" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></span></div></div><div class="rest-countdown"><span>下一次休息</span><strong id="restCountdown">—</strong></div></div>
         <div class="next-shifts-block"><p class="section-label">接下来的工作</p><div class="next-shift-info" id="nextShiftContainer"></div></div>
@@ -177,7 +216,7 @@
         <section class="companion" id="companion" aria-label="排班小陪伴" hidden>
           <div class="companion-bubble" id="companionBubble">
             <p class="companion-heading"><span class="companion-sigil" aria-hidden="true">◇</span><span id="companionName">大肥龙</span><span class="companion-heading-note">的一点碎碎念</span></p>
-            <p class="companion-message" id="companionMessage"></p>
+            <p class="companion-message" id="companionMessage" tabindex="0" role="region" aria-label="陪伴留言，长文可在此滚动"></p>
           </div>
           <button class="companion-character" id="companionCharacter" type="button" aria-label="戳戳大肥龙，换一句话" aria-describedby="companionMessage" title="戳戳我，换一句话">
             <span class="companion-portrait"><img id="companionDay" data-src="assets/chibi-day.webp?v=054d3e39a4f8" data-image-theme="light" loading="lazy" alt="" width="320" height="320" decoding="async"><img id="companionNight" data-src="assets/chibi-night.webp?v=03bdefc4fa37" data-image-theme="dark" loading="lazy" alt="" width="320" height="320" decoding="async" hidden></span>
@@ -187,8 +226,9 @@
           <span class="companion-announcement" id="companionAnnouncement" role="status" aria-live="polite" aria-atomic="true"></span>
         </section>
         <section class="calendar-section panel enter-stage" id="calendarSection" aria-label="月度排班日历"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div>
-          <div class="calendar-heading"><div><p class="eyebrow calendar-eyebrow">月度安排 <span class="heading-rule"></span></p><div class="month-navigation"><button class="month-title" id="monthTitle" data-action="openPicker" aria-haspopup="dialog" title="选择年月"></button><div class="month-arrows"><button class="nav-btn" id="prevBtn" data-action="prevMonth" aria-label="上个月">‹</button><button class="nav-btn" id="nextBtn" data-action="nextMonth" aria-label="下个月">›</button></div></div></div><div class="calendar-actions"><span class="month-meta" id="monthMeta"></span><button class="button today-button" id="backToToday" title="回到今天 · T"><span class="today-button-dot" aria-hidden="true"></span> 今天</button></div></div>
-          <div class="calendar-subhead"><div class="legend" id="legendContainer" aria-label="班次图例"></div><span class="calendar-tip">留一点时间，给自己。</span></div>
+          <span class="folio-motes" aria-hidden="true"><span class="folio-mote"></span><span class="folio-mote"></span></span>
+          <div class="calendar-heading"><div><p class="eyebrow calendar-eyebrow">月度安排 <span class="heading-rule"></span></p><div class="month-navigation"><button class="month-title" id="monthTitle" data-action="openPicker" aria-haspopup="dialog" aria-live="polite" aria-atomic="true" title="选择年月"></button><div class="month-arrows"><button class="nav-btn" id="prevBtn" data-action="prevMonth" aria-label="上个月">‹</button><button class="nav-btn" id="nextBtn" data-action="nextMonth" aria-label="下个月">›</button></div></div></div><div class="calendar-actions"><span class="month-meta" id="monthMeta"></span><button class="button today-button" id="backToToday" title="回到今天 · T"><span class="today-button-dot" aria-hidden="true"></span> 今天</button></div></div>
+          <div class="calendar-subhead"><div class="legend" id="legendContainer" aria-label="班次图例"></div><span class="calendar-tip">留一点时间，给自己。</span><span class="swipe-hint"><span aria-hidden="true">↔</span> 左右滑动切月</span></div>
           <div class="calendar"><div class="weekdays" aria-hidden="true"><div>周一 <span>MON</span></div><div>周二 <span>TUE</span></div><div>周三 <span>WED</span></div><div>周四 <span>THU</span></div><div>周五 <span>FRI</span></div><div class="weekend">周六 <span>SAT</span></div><div class="weekend">周日 <span>SUN</span></div></div><div class="days-grid" id="daysGrid"></div></div>
           <div class="calendar-footnote"><span><span class="today-key"></span> 今天 <span class="selection-key"></span> 已选日期</span><span class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> 切月 <kbd>T</kbd> 今天 <kbd>Esc</kbd> 关闭</span><span>点击日期查看安排 <span aria-hidden="true">↗</span></span></div>
         </section>

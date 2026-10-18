@@ -39,6 +39,145 @@ function keyboardViewport(w,{visual=true,height=844}={}) {
   w.clearTimeout = id => pending.delete(id);
   return {viewport,pending,flush() { const callbacks = [...pending.values()]; pending.clear(); callbacks.forEach(callback=>callback()); }};
 }
+function pointer(w,target,type,{x=200,y=200,id=1,pointerType='touch',primary=true}={}) {
+  const event = new w.Event(type,{bubbles:true,cancelable:true});
+  for (const [key,value] of Object.entries({clientX:x,clientY:y,pointerId:id,pointerType,isPrimary:primary})) {
+    Object.defineProperty(event,key,{value});
+  }
+  target.dispatchEvent(event);
+  return event;
+}
+function swipe(w,d,{from=250,to=100,y=200,pointerType='touch'}={}) {
+  pointer(w,d.querySelector('.calendar'),'pointerdown',{x:from,y,pointerType});
+  pointer(w,w,'pointermove',{x:to,y:y+5,pointerType});
+  pointer(w,w,'pointerup',{x:to,y:y+5,pointerType});
+}
+test('horizontal touch and pen swipes switch months and update the monthly summary',t => {
+  const {w,d,app} = boot(t);
+  swipe(w,d);
+  assert.equal(app.views.viewMonth,10);
+  assert.equal(d.querySelector('#statsMonth').textContent,'2026.11');
+  assert.equal(d.querySelectorAll('#daysGrid button').length,30);
+  swipe(w,d,{from:80,to:250,pointerType:'pen'});
+  assert.equal(app.views.viewMonth,9);
+  assert.equal(d.querySelector('#statsMonth').textContent,'2026.10');
+});
+test('vertical scrolling, diagonal scrolling, short drags and mouse drags never switch months',t => {
+  const {w,d,app} = boot(t), calendar = d.querySelector('.calendar');
+  for (const [x,y] of [[205,350],[300,310],[220,205]]) {
+    pointer(w,calendar,'pointerdown');
+    const movement = pointer(w,w,'pointermove',{x,y});
+    pointer(w,w,'pointerup',{x,y});
+    assert.equal(movement.defaultPrevented,false,'Native scrolling must not be cancelled');
+    assert.equal(app.views.viewMonth,9);
+  }
+  swipe(w,d,{pointerType:'mouse'});
+  assert.equal(app.views.viewMonth,9);
+});
+test('a completed swipe suppresses its date click but leaves keyboard and the next tap usable',t => {
+  const {w,d,app} = boot(t);
+  swipe(w,d);
+  let cell = d.querySelector('#daysGrid button');
+  cell.dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+  assert.equal(d.querySelector('#detailPanel').classList.contains('show'),false);
+  cell.click();
+  assert.equal(d.querySelector('#detailPanel').classList.contains('show'),true,'Keyboard activation has detail 0');
+  app.views.closeDetail();
+  pointer(w,cell,'pointerdown');
+  pointer(w,w,'pointerup');
+  cell.dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+  assert.equal(d.querySelector('#detailPanel').classList.contains('show'),true);
+});
+test('pinch gestures, cancelled pointers and backgrounding discard pending swipes',t => {
+  const {w,d,app} = boot(t), calendar = d.querySelector('.calendar');
+  for (const secondTarget of [calendar,d.body]) {
+    pointer(w,calendar,'pointerdown');
+    pointer(w,secondTarget,'pointerdown',{id:2,primary:false});
+    pointer(w,w,'pointermove',{x:40});
+    pointer(w,w,'pointerup',{x:40});
+    pointer(w,w,'pointerup',{id:2});
+    assert.equal(app.views.viewMonth,9);
+  }
+  for (const cancel of ['pointercancel','blur','visibilitychange']) {
+    pointer(w,calendar,'pointerdown');
+    if (cancel === 'pointercancel') pointer(w,w,cancel);
+    else (cancel === 'blur' ? w : d).dispatchEvent(new w.Event(cancel));
+    pointer(w,w,'pointerup',{x:40});
+    assert.equal(app.views.viewMonth,9,cancel);
+  }
+  swipe(w,d);
+  assert.equal(app.views.viewMonth,10,'A cancelled gesture must not block the next swipe');
+});
+test('swipes respect navigation bounds, year changes, dialogs and reduced motion',t => {
+  const {w,d,app} = boot(t,{reducedMotion:true});
+  app.views.navigateMonth(app.views.minYear(),0);
+  swipe(w,d,{from:70,to:260});
+  assert.equal(app.views.viewYear,2025);
+  assert.equal(app.views.viewMonth,0);
+  app.views.navigateMonth(app.views.maxYear(),11);
+  swipe(w,d);
+  assert.equal(app.views.viewYear,2027);
+  assert.equal(app.views.viewMonth,11);
+  app.views.navigateMonth(2026,11);
+  swipe(w,d);
+  assert.equal(app.views.viewYear,2027);
+  assert.equal(app.views.viewMonth,0);
+  app.views.openPicker();
+  swipe(w,d);
+  assert.equal(app.views.viewMonth,0);
+  app.views.closePicker();
+  pointer(w,d.querySelector('.calendar'),'pointerdown');
+  app.settings.openSettings();
+  pointer(w,w,'pointerup',{x:20});
+  assert.equal(app.views.viewMonth,0,'Opening a dialog mid-gesture must stop navigation');
+});
+test('slow horizontal holds do not navigate and today retains its accessible date marker',t => {
+  const {w,d,app} = boot(t,{now:'2026-10-18T12:00:00'});
+  let elapsed = 100;
+  w.performance.now = () => elapsed;
+  pointer(w,d.querySelector('.calendar'),'pointerdown');
+  elapsed += 1200;
+  pointer(w,w,'pointerup',{x:20});
+  assert.equal(app.views.viewMonth,9);
+  const today = d.querySelector('[aria-current="date"]');
+  assert.equal(today.dataset.date,'2026-10-18');
+  assert.equal(today.querySelector('.today-label').textContent,'今');
+  assert.equal(today.querySelector('.holiday-badge').textContent,'重阳节');
+});
+test('ambient scene observation only enables visible decorations',t => {
+  const {w,d,app} = boot(t);
+  let callback;
+  const observed = [];
+  w.IntersectionObserver = class {
+    constructor(handler) { callback = handler; }
+    observe(element) { observed.push(element); }
+  };
+  app.ui.observeAmbientMotion();
+  assert.deepEqual(observed.map(scene=>scene.classList.contains('workspace-intro') ? 'hero' : scene.classList.contains('today-card') ? 'today' : scene.id),['hero','today','calendarSection']);
+  const hero = d.querySelector('.workspace-intro');
+  callback([{target:hero,isIntersecting:false}]);
+  assert.equal(hero.classList.contains('ambient-visible'),false);
+  callback([{target:hero,isIntersecting:true}]);
+  assert.equal(hero.classList.contains('ambient-visible'),true);
+  const calendar = d.querySelector('#calendarSection');
+  callback([{target:calendar,isIntersecting:false}]);
+  assert.equal(calendar.classList.contains('ambient-visible'),false);
+  callback([{target:calendar,isIntersecting:true}]);
+  assert.equal(calendar.classList.contains('ambient-visible'),true);
+});
+test('muted adjacent dates complete weeks without adding selectable dates or breaking February',t => {
+  const {d,app} = boot(t);
+  const adjacent = [...d.querySelectorAll('#daysGrid .empty')];
+  assert.deepEqual(adjacent.map(cell=>cell.querySelector('.day-num').textContent),['28','29','30','1']);
+  assert.deepEqual(adjacent.map(cell=>cell.querySelector('.adjacent-month').textContent),['9月','9月','9月','11月']);
+  assert.ok(adjacent.every(cell=>cell.tagName==='DIV' && cell.getAttribute('aria-hidden')==='true'));
+  assert.equal(d.querySelector('#daysGrid').children.length,35);
+  app.views.navigateMonth(2026,1);
+  assert.equal(d.querySelectorAll('#daysGrid button').length,28);
+  assert.equal(d.querySelector('#daysGrid').children.length,35);
+  app.views.navigateMonth(2026,2);
+  assert.equal(d.querySelector('#daysGrid').children.length,42);
+});
 test('default initialization renders a full month and twelve accessible month buttons',t => {
   const {d, app} = boot(t);
   assert.equal(d.querySelectorAll('#daysGrid button').length,31);
@@ -642,6 +781,28 @@ test('companions use the matching theme artwork and reset their copy on theme ch
   assert.ok(d.querySelector('#companionCharacter').getAttribute('aria-label').includes('大肥龙'));
   d.querySelector('#themeToggle').click();
   assert.equal(d.querySelector('#companionName').textContent,'大肥鱼');
+});
+test('the companion reading window is keyboard accessible and new messages start at the top',t => {
+  const {d,app} = boot(t);
+  const message = d.querySelector('#companionMessage');
+  assert.equal(message.getAttribute('role'),'region');
+  assert.equal(message.tabIndex,0);
+  assert.ok(message.getAttribute('aria-label').includes('滚动'));
+  message.scrollTop = 80;
+  d.querySelector('#companionCharacter').click();
+  assert.equal(message.scrollTop,0);
+  message.scrollTop = 60;
+  app.setTheme('dark');
+  assert.equal(message.scrollTop,0);
+});
+test('quiet companion countdown updates do not reset the reading position',t => {
+  const {d,app,setNow} = boot(t,{now:'2026-10-19T12:00:00'});
+  const message = d.querySelector('#companionMessage');
+  message.scrollTop = 40;
+  setNow('2026-10-19T12:02:00');
+  app.updateLiveClockAndCountdown();
+  assert.equal(message.scrollTop,40);
+  assert.equal(d.querySelector('#companionAnnouncement').textContent,'');
 });
 test('companion status follows the exact start and end of a shift, highlighting only the time',t => {
   const {w, d, setNow, app}=boot(t,{now:'2026-04-18T07:59:30'});

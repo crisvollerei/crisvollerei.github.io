@@ -31,8 +31,19 @@ export function createUI(window) {
   motionPreference?.addEventListener?.('change',event => {
     if (event.matches) for (const animation of runningAnimations) animation.cancel();
   });
-  function reveal(element) {
-    animateElement(element,[{opacity:0,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],{duration:330});
+  function reveal(element, options = {}) {
+    animateElement(element,[{opacity:0,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],{duration:330,...options});
+  }
+  function observeAmbientMotion() {
+    const scenes = document.querySelectorAll('.workspace-intro,.today-card,.calendar-section');
+    if (window.IntersectionObserver) {
+      const observer = new window.IntersectionObserver(entries => {
+        for (const entry of entries) entry.target.classList.toggle('ambient-visible',entry.isIntersecting);
+      });
+      for (const scene of scenes) observer.observe(scene);
+    } else {
+      for (const scene of scenes) scene.classList.add('ambient-visible');
+    }
   }
   function openDialog(id, { nested = false } = {}) {
     if (active()?.id === id) return;
@@ -117,7 +128,7 @@ export function createUI(window) {
     if (event.shiftKey && (document.activeElement === first || isContainer)) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && (document.activeElement === last || isContainer)) { event.preventDefault(); first?.focus(); }
   });
-  return { $, mk, toast, reveal, animateElement, motionAllowed, openDialog, closeDialog, confirmAction,
+  return { $, mk, toast, reveal, animateElement, motionAllowed, observeAmbientMotion, openDialog, closeDialog, confirmAction,
     runningAnimations, get activeDialog() { return active()?.id || null; },
     setLifecycle(value) { lifecycle = value; }, onDismiss(id, handler) { dismissHandlers.set(id,handler); } };
 }
