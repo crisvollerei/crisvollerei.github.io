@@ -186,6 +186,31 @@ test('default initialization renders a full month and twelve accessible month bu
   assert.equal(d.querySelector('#workHours').textContent,'192');
   assert.equal(d.querySelector('#storageNotice').hidden,true);
 });
+test('monthly balance reports working days rather than individual shift colors and follows month navigation',t => {
+  const {d,app} = boot(t);
+  assert.equal(d.querySelector('#workDays').textContent,'16 天');
+  assert.equal(d.querySelector('#restDays').textContent,'15 天');
+  assert.equal(d.querySelector('#workPercent').textContent,'52%');
+  assert.equal(d.querySelector('#restPercent').textContent,'48%');
+  assert.match(d.querySelector('#workBalance').getAttribute('aria-label'),/工作16天，占52%；休息15天，占48%/);
+  app.views.navigateMonth(2026,1);
+  assert.equal(d.querySelector('#monthDays').textContent,'全月 28 天');
+  assert.equal(Number.parseInt(d.querySelector('#workDays').textContent) + Number.parseInt(d.querySelector('#restDays').textContent),28);
+  assert.match(d.querySelector('#workBalance').getAttribute('aria-label'),/^2月共28天/);
+});
+test('monthly balance uses work attributes even with reversed colors and handles zero-length segments',t => {
+  for (const isWork of [true,false]) {
+    const config = {anchor:'2026-04-18',cycle:['自定义'],shiftDefs:{'自定义':{cssClass:isWork ? 'rest' : 'day',emoji:'○',isWork,startTime:'08:00',endTime:'16:00'}}};
+    const {d} = boot(t,{storage:{'qingzheng-config':JSON.stringify(config)}});
+    assert.equal(d.querySelector('#workDays').textContent,isWork ? '31 天' : '0 天');
+    assert.equal(d.querySelector('#restDays').textContent,isWork ? '0 天' : '31 天');
+    assert.equal(d.querySelector('#workPercent').textContent,isWork ? '100%' : '0%');
+    assert.equal(d.querySelector('#workBalanceWork').hidden,!isWork);
+    assert.equal(d.querySelector('#workBalanceRest').hidden,isWork);
+    assert.equal(d.querySelector('#workBalanceWork').style.flexGrow,isWork ? '31' : '0');
+    assert.equal(d.querySelector('#workBalanceRest').style.flexGrow,isWork ? '0' : '31');
+  }
+});
 test('broken JSON, empty cycles and blocked storage all retain a usable calendar',t => {
   for (const options of [{storage:{'qingzheng-cycle':'not JSON'}},{storage:{'qingzheng-cycle':'[]','qingzheng-anchor':'2026-02-31'}},{blocked:true}]) {
     const {d, app} = boot(t,options);

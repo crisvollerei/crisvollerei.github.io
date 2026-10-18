@@ -2,7 +2,7 @@ import { createStorage } from './storage.js?v=12c75b2d9435';
 import { createUI } from './ui.js?v=43fe521d5ef9';
 import { createSchedule } from './schedule.js?v=28657352ebfd';
 import { createFestivals } from './festivals.js?v=4d4197fe0e0a';
-import { createViews } from './views.js?v=67537a80e905';
+import { createViews } from './views.js?v=53ff925ab57d';
 import { createCompanion } from './companion.js?v=55425bc50cdc';
 import { createSettings } from './settings.js?v=0e27e2b7e132';
 export function createApp(window) {

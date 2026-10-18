@@ -18,27 +18,31 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       const def = getShiftDef(name), count = stats[name] || 0, difference = count - (previous[name] || 0);
       const card = mk('div', { cls:`stat-card ${def.cssClass}` });
       const change = difference === 0 ? '较上月持平' : `较上月 ${difference > 0 ? '+' : ''}${difference} 天`;
-      card.append(mk('span', { cls:'stat-icon', text:def.emoji }), mk('div', { cls:'stat-value', text:count }), mk('div', { cls:'stat-label', text:`${name} / 天` }), mk('div', { cls:`stat-trend ${difference > 0 ? 'up' : difference < 0 ? 'down' : 'same'}`, text:change }));
+      const label = mk('div', {cls:'stat-label'});
+      const dot = mk('span', {cls:'legend-dot'}); dot.setAttribute('aria-hidden','true');
+      label.append(dot, mk('span', {text:name}));
+      const value = mk('div', {cls:'stat-value', text:count});
+      value.append(mk('span', {cls:'stat-unit', text:'天'}));
+      card.append(label, value, mk('div', {cls:'stat-trend', text:change}));
       return card;
     });
     $('statsContainer').replaceChildren(...cards);
     $('statsContainer').style.gridTemplateColumns = `repeat(${Math.min(shifts.length, 3)},minmax(0,1fr))`;
     $('workHours').textContent = calculateWorkHours(viewYear, viewMonth);
-    let cumulative = 0;
-    const gradient = shifts.map(name => {
-      const from = cumulative; cumulative += (stats[name] || 0) / totalDays * 100;
-      return `var(--${getShiftDef(name).cssClass}-color) ${from}% ${cumulative}%`;
-    });
-    $('ringChart').style.background = `conic-gradient(${gradient.join(',')})`;
     const workDays = shifts.reduce((sum, name) => sum + (isWorkShift(name) ? stats[name] || 0 : 0), 0);
-    $('ringChartInner').textContent = `${Math.round(workDays / totalDays * 100)}%`;
-    $('ringChart').setAttribute('aria-label', `${viewMonth + 1}月工作${workDays}天，占${Math.round(workDays / totalDays * 100)}%`);
+    const restDays = totalDays - workDays, workPercent = Math.round(workDays / totalDays * 100);
+    $('monthDays').textContent = `全月 ${totalDays} 天`;
+    $('workDays').textContent = `${workDays} 天`;
+    $('restDays').textContent = `${restDays} 天`;
+    $('workPercent').textContent = `${workPercent}%`;
+    $('restPercent').textContent = `${100 - workPercent}%`;
+    // Segment geometry follows exact day counts, independently of rounded labels.
+    $('workBalanceWork').style.flexGrow = workDays;
+    $('workBalanceRest').style.flexGrow = restDays;
+    $('workBalanceWork').hidden = workDays === 0;
+    $('workBalanceRest').hidden = restDays === 0;
+    $('workBalance').setAttribute('aria-label', `${viewMonth + 1}月共${totalDays}天，工作${workDays}天，占${workPercent}%；休息${restDays}天，占${100 - workPercent}%`);
     $('monthMeta').textContent = `共 ${totalDays} 天 · 工作 ${workDays} 天`;
-    $('ringLegend').replaceChildren(...shifts.map(name => {
-      const item = mk('div', {cls:'ring-legend-item'});
-      const dot = mk('span', {cls:'ring-legend-dot'}); dot.style.background = `var(--${getShiftDef(name).cssClass}-color)`;
-      item.append(dot, mk('span', {text:`${name} ${stats[name] || 0}天`})); return item;
-    }));
   }
   function renderLegend() {
     $('legendContainer').replaceChildren(...getUniqueShiftsInCycle().map(name => {

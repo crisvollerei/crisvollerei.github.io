@@ -156,12 +156,10 @@
   .sidebar { align-items: stretch; }
   .sidebar > .stats-section { display: flex; flex-direction: column; }
   .sidebar .stats-container { display: flex; flex-direction: column; justify-content: space-evenly; flex: 1; margin-top: 0; gap: 8px; }
-  .sidebar .stat-card { display: grid; grid-template-columns: 23px auto minmax(0,1fr); align-items: center; column-gap: 10px; row-gap: 2px; border-left: 0; border-bottom: 1px solid var(--border); padding: 10px 0; }
-  .sidebar .stat-card:last-child { border-bottom: 0; }
-  .sidebar .stat-icon { grid-column: 1; grid-row: 1 / span 2; margin: 0; }
-  .sidebar .stat-value { grid-column: 2; grid-row: 1 / span 2; min-width: 2ch; margin: 0; font-size: 29px; }
-  .sidebar .stat-label { grid-column: 3; grid-row: 1; }
-  .sidebar .stat-trend { grid-column: 3; grid-row: 2; margin: 0; }
+  .sidebar .stat-card { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; column-gap: 10px; row-gap: 3px; padding: 10px 12px; }
+  .sidebar .stat-value { grid-column: 2; grid-row: 1 / span 2; margin: 0; font-size: 29px; }
+  .sidebar .stat-label { grid-column: 1; grid-row: 1; }
+  .sidebar .stat-trend { grid-column: 1; grid-row: 2; margin: 0; }
   .sidebar > .upcoming-panel { display: flex; flex-direction: column; }
   .sidebar .upcoming-list { flex: 1; justify-content: space-between; }
 }

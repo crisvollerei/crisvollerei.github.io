@@ -1,2 +1,2 @@
-import { createApp } from './app.js?v=97be9d52b2da';
+import { createApp } from './app.js?v=140bbb056020';
 createApp(window);

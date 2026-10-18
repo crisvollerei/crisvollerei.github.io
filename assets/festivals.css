@@ -43,7 +43,7 @@
 .section-heading h2, .settings-section-heading h3 { font-size: 16px; }
 .stat-card { padding-inline: 6px; }
 .stat-card:last-child { padding-right: 0; }
-.hours-note, .stat-trend, .ring-caption, .calendar-data-note { font-size: 11px; }
+.hours-note, .stat-trend, .calendar-data-note { font-size: 11px; }
 .form-group input, .form-group textarea, .shift-def-row select, .shift-def-row input[type="time"] { font-size: 15px; }
 .shift-def-row input[type="time"] { width: 116px; }
 .year-overview summary { min-height: 82px; }
