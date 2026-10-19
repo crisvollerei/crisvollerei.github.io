@@ -6,6 +6,17 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html = fs.readFileSync(path.join(root,'index.html'),'utf8');
+test('Vercel serves the existing static root after the shared build without changing other hosts',() => {
+  const config = JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8'));
+  const cloudflare = JSON.parse(fs.readFileSync(path.join(root,'wrangler.jsonc'),'utf8'));
+  assert.equal(config.framework,null);
+  assert.equal(config.buildCommand,'npm run build');
+  assert.equal(config.outputDirectory,'.');
+  assert.equal(cloudflare.assets.directory,config.outputDirectory);
+  assert.ok(fs.existsSync(path.join(root,config.outputDirectory,'index.html')));
+  assert.ok(fs.existsSync(path.join(root,config.outputDirectory,'assets/main.js')));
+  assert.equal(config.rewrites,undefined,'Static module requests must not be rewritten to HTML');
+});
 test('HTML uses external scripts and event listeners compatible with a strict CSP',() => {
   assert.doesNotMatch(html,/\son\w+\s*=/i);
   for (const script of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {

@@ -138,6 +138,7 @@ tests/                     计算、交互和资源回归检查
 .github/workflows/test.yml GitHub Actions 自动检查
 _headers                   Cloudflare 安全头与缓存策略
 wrangler.jsonc             Cloudflare 静态托管配置
+vercel.json                Vercel 静态构建与输出目录配置
 ```
 
 ## 维护与部署
@@ -153,6 +154,8 @@ npm run check
 `npm run build` 更新资源内容哈希及 `qingzheng-offline.html`；不要手工修改离线生成文件。`npm test` 运行回归检查，`npm run check` 还校验资源版本及离线文件与源码是否同步。GitHub Actions 在 push / PR 时运行检查。
 
 GitHub Pages 使用 `main` 分支根目录，入口为 `index.html`，无需服务器运行时。其他静态托管也可使用同一入口和 `assets/` 目录；已有配置能否延续取决于网站地址与存储空间是否保持一致。
+
+Vercel 使用 `vercel.json` 按普通静态网站部署：框架预设为 Other，构建命令为 `npm run build`，输出目录为仓库根目录 `.`。构建更新根目录的资源版本和离线文件，不生成单独的 `public/` 目录。
 
 页面使用严格 CSP，不允许任意内联脚本或 `eval`；离线版使用自身脚本和样式的精确哈希。`_headers` 适用于支持该文件的 Cloudflare 托管，GitHub Pages 不读取它。其他平台若给离线 HTML 添加响应头，需使用与该文件相容的 CSP，而非直接套用网站版外部脚本策略。
 
