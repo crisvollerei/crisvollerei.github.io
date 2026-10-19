@@ -1,10 +1,12 @@
 import { createStorage } from './storage.js?v=12c75b2d9435';
-import { createUI } from './ui.js?v=43fe521d5ef9';
-import { createSchedule } from './schedule.js?v=28657352ebfd';
+import { createUI } from './ui.js?v=4df59f3744d9';
+import { createSchedule } from './schedule.js?v=aab834ceb702';
 import { createFestivals } from './festivals.js?v=4d4197fe0e0a';
-import { createViews } from './views.js?v=53ff925ab57d';
+import { createViews } from './views.js?v=0e7debd28de1';
 import { createCompanion } from './companion.js?v=55425bc50cdc';
-import { createSettings } from './settings.js?v=0e27e2b7e132';
+import { createSettings } from './settings.js?v=2b4ec1549f42';
+import { createDataTools } from './data-tools.js?v=d1fd52e5a6f6';
+import { createPersonalization } from './personalization.js?v=31f9a0dac8f4';
 export function createApp(window) {
   const { document, Date } = window;
   const storage = createStorage(window);
@@ -14,6 +16,8 @@ export function createApp(window) {
   const views = createViews({window,ui,schedule,festivals,onUpdateLive:updateLiveClockAndCountdown});
   const companion = createCompanion({window,ui,schedule});
   const settings = createSettings({window,ui,schedule,views,storage});
+  const personalization = createPersonalization({window,ui,storage});
+  const dataTools = createDataTools({window,ui,schedule,settings,personalization});
   const { $, mk, reveal, toast } = ui;
   const { getShiftDef, getCycleIndex, getLunarDate, formatDateISO, getWeekdayCn, shiftTimeText, getEffectiveShiftInfo, formatCountdown, getNextWorkDelay, getDaysToRest } = schedule;
   const { getHoliday, renderFestivalNotice } = festivals;
@@ -92,6 +96,10 @@ export function createApp(window) {
       storage.set('qingzheng-theme-mode','manual');
     }
     $('themeAuto').setAttribute('aria-pressed',String(automaticTheme));
+    $('themeAuto').setAttribute('aria-label',`${automaticTheme ? '关闭' : '启用'}昼夜自动主题`);
+    $('themeAuto').title = automaticTheme
+      ? '自动主题已开启：07:00–19:00 银昼，其余时间蓝夜；点击关闭并保持当前主题'
+      : '自动主题已关闭；点击启用：07:00–19:00 银昼，其余时间蓝夜';
   }
   function themeForTime(date) { return date.getHours() >= 7 && date.getHours() < 19 ? 'light' : 'dark'; }
   function enableAutomaticTheme() {
@@ -100,6 +108,12 @@ export function createApp(window) {
     setTheme(themeForTime(new Date()),false);
     toast('已启用昼夜主题，07:00–19:00 为银昼，其余时间为蓝夜');
   }
+  function toggleAutomaticTheme() {
+    if (!automaticTheme) { enableAutomaticTheme(); return; }
+    const theme = document.documentElement.dataset.theme;
+    setTheme(theme);
+    toast(`已关闭自动主题，保持${theme === 'light' ? '银昼' : '蓝夜'}`);
+  }
   $('themeToggle').addEventListener('click',() => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
   $('backToToday').addEventListener('click',views.backToToday);
   document.addEventListener('visibilitychange',() => {
@@ -107,7 +121,7 @@ export function createApp(window) {
     if (!document.hidden) updateLiveClockAndCountdown();
   });
   document.addEventListener('keydown',event => {
-    if (ui.activeDialog || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest?.('input,textarea,select,[contenteditable="true"]')) return;
+    if (ui.activeDialog || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest?.('input,textarea,select,[contenteditable="true"],#companionMessage')) return;
     if (event.key === 'ArrowLeft') { event.preventDefault(); views.prevMonth(); }
     else if (event.key === 'ArrowRight') { event.preventDefault(); views.nextMonth(); }
     else if (event.key.toLowerCase() === 't') { event.preventDefault(); views.backToToday(); }
@@ -120,7 +134,7 @@ export function createApp(window) {
     const savedMode = storage.get('qingzheng-theme-mode');
     automaticTheme = savedMode === 'auto' || !['light','dark'].includes(savedTheme);
     setTheme(automaticTheme ? themeForTime(now) : savedTheme === 'dark' ? 'dark' : 'light',false);
-    settings.loadPresets(); storage.updateNotice(); render();
+    personalization.load(); settings.loadPresets(); storage.updateNotice(); render();
     $('companion').hidden = false;
     document.documentElement.classList.toggle('page-hidden',document.hidden);
     ui.observeAmbientMotion();
@@ -135,14 +149,23 @@ export function createApp(window) {
   const actions = {
     openYearOverview: views.openYearOverview, openPicker: views.openPicker, closePicker: views.closePicker,
     prevMonth: views.prevMonth, nextMonth: views.nextMonth, closeDetail: views.closeDetail,
+    prevDetail: () => views.moveDetail(-1), nextDetail: () => views.moveDetail(1),
     pickerPrevYear: views.pickerPrevYear, pickerNextYear: views.pickerNextYear,
     saveAsPreset: settings.saveAsPreset, closePresetDialog: settings.closePresetDialog,
     openSettings: settings.openSettings, closeSettings: settings.closeSettings,
-    addShiftDef: settings.addShiftDef, saveSettings: settings.saveSettings, enableAutomaticTheme
+    addShiftDef: settings.addShiftDef, saveSettings: settings.saveSettings,
+    restoreDefaultSettings: settings.restoreDefaultSettings,
+    removeLastCycleShift: settings.removeLastCycleShift,
+    openDataTools: dataTools.openDataTools, closeDataTools: dataTools.closeDataTools,
+    openPersonalization: personalization.openPersonalization, closePersonalization: personalization.closePersonalization,
+    resetAvatar: personalization.resetAvatar, resetTitle: personalization.resetTitle,
+    exportBackup: dataTools.exportBackup, importBackup: dataTools.importBackup,
+    copyBackupText: dataTools.copyBackupText, selectBackupText: dataTools.selectBackupText,
+    previewBackupText: dataTools.previewBackupText, toggleAutomaticTheme
   };
   for (const button of document.querySelectorAll('[data-action]')) {
     button.addEventListener('click',() => actions[button.dataset.action]?.());
   }
   init();
-  return { setTheme, enableAutomaticTheme, updateLiveClockAndCountdown, schedule, views, settings, ui, festivals, companion, get liveTimer() { return liveTimer; }, get lastDayKey() { return lastDayKey; } };
+  return { setTheme, enableAutomaticTheme, toggleAutomaticTheme, updateLiveClockAndCountdown, schedule, views, settings, dataTools, personalization, ui, festivals, companion, get liveTimer() { return liveTimer; }, get lastDayKey() { return lastDayKey; } };
 }

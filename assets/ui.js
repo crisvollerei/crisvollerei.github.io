@@ -93,9 +93,12 @@ export function createUI(window) {
     if (dismissHandlers.has(id)) dismissHandlers.get(id)();
     else closeDialog(id);
   }
-  function confirmAction(message, onConfirm) {
+  function confirmAction(message, onConfirm, { title = '确认删除', accept = '确认删除', cancel = '取消' } = {}) {
     if (pendingConfirmation) return;
     pendingConfirmation = onConfirm;
+    $('confirmTitle').textContent = title;
+    $('confirmAccept').textContent = accept;
+    $('confirmCancel').textContent = cancel;
     $('confirmDescription').textContent = message;
     openDialog('confirmModal',{nested:true});
   }
@@ -114,7 +117,7 @@ export function createUI(window) {
       $(active().id).querySelector('[role="dialog"]').focus({preventScroll:true});
     }
   });
-  for (const id of ['settingsModal','pickerModal','presetModal','confirmModal']) {
+  for (const id of ['settingsModal','pickerModal','presetModal','confirmModal','dataModal','personalizationModal']) {
     $(id).addEventListener('click',event => { if (event.target === $(id)) dismissDialog(id); });
   }
   document.addEventListener('keydown',event => {
@@ -122,7 +125,7 @@ export function createUI(window) {
     if (event.key === 'Escape') { event.preventDefault(); dismissDialog(active().id); }
     if (event.key !== 'Tab') return;
     const nodes = [...$(active().id).querySelectorAll('button,input,textarea,select')]
-      .filter(node => !node.disabled && !node.hidden)
+      .filter(node => !node.disabled && !node.closest('[hidden],[inert]'))
       .sort((a,b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
     const first = nodes[0], last = nodes.at(-1), isContainer = document.activeElement.getAttribute('role') === 'dialog';
     if (event.shiftKey && (document.activeElement === first || isContainer)) { event.preventDefault(); last?.focus(); }

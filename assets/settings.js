@@ -1,5 +1,5 @@
 import Core from './schedule-core.js?v=fc384b3c941b';
-import { CSS_PRESETS, STYLE_NAMES, PRESET_ICONS, DEFAULT_SHIFT_DEFS } from './config.js?v=9715089d804c';
+import { CSS_PRESETS, STYLE_NAMES, PRESET_ICONS, DEFAULT_ANCHOR, DEFAULT_CYCLE, DEFAULT_SHIFT_DEFS } from './config.js?v=68f942b55cf8';
 import { syncAndroidBridge } from './integrations.js?v=924ca4c1da81';
 export function createSettings({window, ui, schedule, views, storage}) {
   const { document, Date } = window;
@@ -7,10 +7,14 @@ export function createSettings({window, ui, schedule, views, storage}) {
   const { set: storageSet, readJSON } = storage;
   const { captureCurrentConfig } = schedule;
   let PRESETS = [], activePresetId = null, draftDefs = null;
-  function configKey(config) { return JSON.stringify([config.anchor,config.cycle,Object.entries(config.shiftDefs).sort(([a],[b])=>a.localeCompare(b))]); }
-  function commitConfig(config) {
+  const presetNodes = new Map();
+  function configKey(config) {
+    return JSON.stringify([config.anchor,config.cycle,Object.entries(config.shiftDefs).sort(([a],[b])=>a.localeCompare(b))
+      .map(([name,def]) => [name,def.emoji,def.cssClass,def.isWork,def.startTime,def.endTime,!!def.crossDay])]);
+  }
+  function commitConfig(config,options) {
     if (!Core.normalizeConfig(config)) return false;
-    const persisted = schedule.commitConfig(config);
+    const persisted = schedule.commitConfig(config,options);
     syncActivePreset(); views.closeDetail(); views.render();
     syncAndroidBridge(window,schedule.captureCurrentConfig(),toast);
     return persisted;
@@ -83,21 +87,73 @@ export function createSettings({window, ui, schedule, views, storage}) {
     });
   }
   function renderPresetBar() {
-    const items = [];
-    if (!activePresetId) items.push(mk('span',{cls:'preset-label',text:PRESETS.length ? '自定义排班' : '当前排班'}));
-    for (const preset of PRESETS) {
-      const group = mk('div',{cls:`preset-group${preset.id === activePresetId ? ' active' : ''}`});
-      const apply = mk('button',{cls:'preset-btn',text:preset.name,onclick:()=>applyPreset(preset.id)});
-      apply.title = `应用方案「${preset.name}」`; apply.setAttribute('aria-pressed',String(preset.id === activePresetId));
-      const remove = mk('button',{cls:'preset-delete',text:'×',onclick:()=>deletePreset(preset.id)});
-      remove.setAttribute('aria-label',`删除方案「${preset.name}」`);
-      group.append(apply,remove); items.push(group);
+    const bar = $('presetBar'), ids = new Set(PRESETS.map(preset => preset.id));
+    for (const [id,group] of presetNodes) {
+      if (!ids.has(id)) { group.remove(); presetNodes.delete(id); }
     }
-    $('presetBar').replaceChildren(...items);
+    let label = bar.querySelector('.preset-label');
+    if (activePresetId) { label?.remove(); label = null; }
+    else {
+      const text = PRESETS.length ? '自定义排班' : '当前排班';
+      if (!label) { label = mk('span',{cls:'preset-label',text}); bar.prepend(label); }
+      else if (label.textContent !== text) label.textContent = text;
+    }
+    let previous = label;
+    for (const preset of PRESETS) {
+      let group = presetNodes.get(preset.id);
+      if (!group) {
+        group = mk('div',{cls:'preset-group'});
+        group.append(mk('button',{cls:'preset-btn',onclick:()=>applyPreset(preset.id)}),
+          mk('button',{cls:'preset-delete',text:'×',onclick:()=>deletePreset(preset.id)}));
+        presetNodes.set(preset.id,group);
+      }
+      const apply = group.firstElementChild, remove = group.lastElementChild;
+      const active = preset.id === activePresetId;
+      if (group.classList.contains('active') !== active) group.classList.toggle('active',active);
+      if (apply.textContent !== preset.name) apply.textContent = preset.name;
+      const title = `应用方案「${preset.name}」`, removeLabel = `删除方案「${preset.name}」`;
+      if (apply.title !== title) apply.title = title;
+      if (apply.getAttribute('aria-pressed') !== String(active)) apply.setAttribute('aria-pressed',String(active));
+      if (remove.getAttribute('aria-label') !== removeLabel) remove.setAttribute('aria-label',removeLabel);
+      // Append or reorder only the changed item; leave the existing buttons and focus intact.
+      const next = previous ? previous.nextSibling : bar.firstChild;
+      if (group !== next) bar.insertBefore(group,next);
+      previous = group;
+    }
+  }
+  function restoreBackup(backup) {
+    const usedNames = new Set(PRESETS.map(preset => preset.name));
+    const numberedName = (name,suffix) => {
+      const ending = `（${suffix}）`;
+      return name.slice(0,40 - ending.length) + ending;
+    };
+    const uniqueName = name => {
+      let result = name, suffix = 1;
+      while (usedNames.has(result)) result = numberedName(name,suffix++);
+      usedNames.add(result);
+      return result;
+    };
+    const addPreset = (config,name) => PRESETS.push({...Core.normalizeConfig(config),
+      id:`preset_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,name:uniqueName(name),createdAt:new Date().toISOString()});
+    // Keep the pre-import schedule reachable even when it was never saved as a preset.
+    const current = captureCurrentConfig();
+    if (!PRESETS.some(preset => configKey(preset) === configKey(current))) addPreset(current,'导入前的排班');
+    for (const preset of backup.presets) {
+      const duplicate = PRESETS.some(existing => {
+        const suffix = existing.name.match(/（([1-9]\d*)）$/)?.[1];
+        return configKey(existing) === configKey(preset) && (existing.name === preset.name || (suffix && existing.name === numberedName(preset.name,suffix)));
+      });
+      if (!duplicate) addPreset(preset,preset.name);
+    }
+    const presetsSaved = savePresets();
+    // Never overwrite the persisted schedule if its recovery preset could not be saved.
+    const configSaved = commitConfig(backup.config,{persist:presetsSaved});
+    return presetsSaved && configSaved;
   }
 
   // Settings are a separate draft. Add/remove/re-render never mutate the live schedule.
-  function settingsError(message) { $('settingsError').textContent = message; $('settingsError').hidden = !message; }
+  function settingsStatus(message = '') { $('settingsStatus').textContent = message; $('settingsStatus').hidden = !message; }
+  function settingsError(message) { settingsStatus(); $('settingsError').textContent = message; $('settingsError').hidden = !message; }
   function openSettings() {
     if (ui.activeDialog === 'settingsModal') return;
     draftDefs = Core.normalizeDefs(schedule.shiftDefs);
@@ -105,7 +161,21 @@ export function createSettings({window, ui, schedule, views, storage}) {
     $('shiftName').value = '';
     settingsError(''); renderShiftDefsEditor(); openDialog('settingsModal');
   }
-  function closeSettings() { draftDefs = null; closeDialog('settingsModal'); }
+  function closeSettings() { draftDefs = null; settingsStatus(); closeDialog('settingsModal'); }
+  function restoreDefaultSettings() {
+    if (!draftDefs || ui.activeDialog !== 'settingsModal') return;
+    const draft = draftDefs;
+    ui.confirmAction(`恢复初始的 ${DEFAULT_CYCLE.length} 天周期、班次与时间，起始日期设为 ${DEFAULT_ANCHOR}？这会替换本页未保存的修改；仍需点击“保存设置”才生效，已保存方案不会删除。`,() => {
+      if (draftDefs !== draft || ui.activeDialog !== 'settingsModal') return;
+      draftDefs = Core.normalizeDefs(DEFAULT_SHIFT_DEFS);
+      $('anchorDate').value = DEFAULT_ANCHOR;
+      $('cyclePattern').value = DEFAULT_CYCLE.join(' ');
+      $('shiftName').value = '';
+      settingsError(''); renderShiftDefsEditor();
+      settingsStatus('已恢复默认，尚未保存。请按实际轮班核对起始日期，再保存设置。');
+      $('settingsStatus').focus();
+    },{title:'恢复默认排班',accept:'恢复默认',cancel:'保留当前编辑'});
+  }
   function readDraftRows() {
     const defs = Object.create(null);
     for (const row of $('shiftDefsEditor').querySelectorAll('.shift-def-row')) {
@@ -140,7 +210,60 @@ export function createSettings({window, ui, schedule, views, storage}) {
       controls.append(startLabel,endLabel,workLabel,crossLabel); row.append(controls); rows.push(row);
     }
     $('shiftDefsEditor').replaceChildren(...rows);
+    $('cycleQuickAdd').replaceChildren(...Object.entries(draftDefs || {}).map(([name,def]) => {
+      const button = mk('button',{cls:`cycle-add ${def.cssClass}`,text:`＋ ${name}`,onclick:() => appendCycleShift(name)});
+      button.dataset.cycleShift = name;
+      button.setAttribute('aria-label',`向周期末尾添加一天${name}`);
+      return button;
+    }));
+    renderCyclePreview();
   }
+  function cycleEntries() { return $('cyclePattern').value.trim().split(/\s+/).filter(Boolean); }
+  function appendCycleShift(name) {
+    if (!draftDefs || !Core.own(draftDefs,name)) return;
+    const cycle = cycleEntries();
+    if (cycle.length >= 3660) { settingsError('周期最多 3660 天，不能继续添加。'); return; }
+    $('cyclePattern').value = [...cycle,name].join(' ');
+    settingsError(''); renderCyclePreview();
+  }
+  function removeLastCycleShift() {
+    if (!draftDefs) return;
+    $('cyclePattern').value = cycleEntries().slice(0,-1).join(' ');
+    settingsError(''); renderCyclePreview();
+  }
+  function renderCyclePreview() {
+    if (!draftDefs) return;
+    settingsStatus();
+    const cycle = cycleEntries(), defs = readDraftRows(), anchor = Core.parseDate($('anchorDate').value);
+    const unknown = [...new Set(cycle.filter(name => !Core.own(defs,name)))];
+    const valid = Core.validCycle(cycle);
+    const workDays = cycle.filter(name => Core.own(defs,name) && defs[name].isWork).length;
+    const restDays = cycle.filter(name => Core.own(defs,name) && !defs[name].isWork).length;
+    for (const button of $('cycleQuickAdd').children) {
+      const className = `cycle-add ${defs[button.dataset.cycleShift].cssClass}`;
+      if (button.className !== className) button.className = className;
+    }
+    const summary = cycle.length ? `${cycle.length} 天一循环 · 工作 ${workDays} 天 · 休息 ${restDays} 天${unknown.length ? ' · 有待定义班次' : ''}` : '还没有班次，可点选班次或直接输入';
+    if ($('cycleSummary').textContent !== summary) $('cycleSummary').textContent = summary;
+    $('cycleRemoveLast').disabled = cycle.length === 0;
+    $('cyclePreviewDays').replaceChildren(...cycle.slice(0,16).map((name,index) => {
+      const def = Core.own(defs,name) ? defs[name] : null;
+      const item = mk('li',{cls:`cycle-preview-day ${def?.cssClass || ''}${def ? '' : ' is-undefined'}`});
+      const date = anchor ? schedule.addDays(anchor,index) : null;
+      item.append(mk('small',{text:`第 ${index + 1} 天${date ? ` · ${date.getMonth()+1}/${date.getDate()}` : ''}`}),
+        mk('strong',{text:name}),mk('span',{text:def ? (def.isWork ? `${def.startTime}–${Core.isCrossDay(def) ? '次日 ' : ''}${def.endTime}` : '休息日') : '待定义'}));
+      return item;
+    }));
+    $('cyclePreviewHint').textContent = !cycle.length ? '添加班次后，这里会显示起始日期对应的安排。'
+      : !valid ? '周期最多 3660 天；每个班次名称应为 1–40 个字符。'
+      : unknown.length ? `未定义：${unknown.slice(0,6).join('、')}${unknown.length > 6 ? '等' : ''}。保存时会补充定义，请确认时间。`
+      : !anchor ? '选择有效的起始日期，即可核对每天的安排。'
+      : `预览${cycle.length > 16 ? '前 16 天，完整周期仍会保存；' : '一个完整周期；'}之后从第一个班次重新循环。`;
+  }
+  $('cyclePattern').addEventListener('input',renderCyclePreview);
+  $('anchorDate').addEventListener('input',renderCyclePreview);
+  $('shiftDefsEditor').addEventListener('input',renderCyclePreview);
+  $('shiftDefsEditor').addEventListener('change',renderCyclePreview);
   function addShiftDef() {
     if (!draftDefs) return;
     const input = $('shiftName'), name = input.value.trim();
@@ -179,5 +302,5 @@ export function createSettings({window, ui, schedule, views, storage}) {
     const persisted = commitConfig({anchor,cycle,shiftDefs:defs}); closeSettings();
     toast(persisted ? '排班设置已保存' : '排班已更新，但浏览器暂时无法保存');
   }
-  return { configKey, commitConfig, loadPresets, savePresets, syncActivePreset, saveAsPreset, presetNameError, closePresetDialog, submitPreset, applyPreset, deletePreset, renderPresetBar, settingsError, openSettings, closeSettings, readDraftRows, labeledInput, renderShiftDefsEditor, addShiftDef, removeShiftDef, saveSettings, get presets() { return PRESETS; }, get draftDefs() { return draftDefs; } };
+  return { configKey, commitConfig, loadPresets, savePresets, syncActivePreset, saveAsPreset, presetNameError, closePresetDialog, submitPreset, applyPreset, deletePreset, renderPresetBar, restoreBackup, settingsError, openSettings, closeSettings, restoreDefaultSettings, readDraftRows, labeledInput, renderShiftDefsEditor, renderCyclePreview, appendCycleShift, removeLastCycleShift, addShiftDef, removeShiftDef, saveSettings, get presets() { return PRESETS; }, get draftDefs() { return draftDefs; } };
 }

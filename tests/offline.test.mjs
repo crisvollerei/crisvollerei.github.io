@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
 import { buildOffline } from '../scripts/build-offline.mjs';
 
 const html = buildOffline();
@@ -12,7 +13,9 @@ test('standalone HTML embeds every startup resource without external module requ
   assert.match(html,/data:image\/webp;base64,/);
   assert.match(html,/<a class="brand" href="#calendarSection"/);
   assert.doesNotMatch(html,/<script type="(?:module|importmap)"/);
-  assert.equal([...html.matchAll(/__modules\["qingzheng\/[\w.-]+"\] = \(\(\) =>/g)].length,13);
+  const bundled = [...html.matchAll(/__modules\["qingzheng\/([\w.-]+)"\] = \(\(\) =>/g)].map(match => match[1]).sort();
+  const modules = fs.readdirSync(new URL('../assets/',import.meta.url)).filter(name => name.endsWith('.js') && name !== 'theme-init.js').sort();
+  assert.deepEqual(bundled,modules);
   const bundle=html.match(/<script>\(\(\) => \{\n'use strict';([\s\S]*?)<\/script>/)[1];
   assert.doesNotMatch(bundle,/^\s*(?:import|export)\b/m);
   assert.ok(html.indexOf(bundle)>html.indexOf('id="daysGrid"'));

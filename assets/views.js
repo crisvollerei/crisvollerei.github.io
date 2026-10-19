@@ -7,6 +7,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   const { getSolarTerm, getHoliday, festivalParts, makeFestivalArt, renderFestivalNotice } = festivals;
   const now = new Date();
   let viewYear = now.getFullYear(), viewMonth = now.getMonth(), selectedDate = null, pickerYear, lastRenderedMonth = null;
+  let detailTrigger = null, detailReturnDate = null, detailReturnSource = null;
   function renderStats() {
     const stats = calculateMonthlyStats(viewYear, viewMonth);
     const previous = calculateMonthlyStats(viewYear, viewMonth - 1);
@@ -70,7 +71,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       const date = new Date(viewYear, viewMonth, d), name = getShift(date), def = getShiftDef(name);
       const today = isSameDay(date, new Date()), selected = selectedDate && isSameDay(date, selectedDate);
       const lunar = getLunarDate(date), term = getSolarTerm(date), festival = getHoliday(date);
-      const cell = mk('button', {cls:`day-cell shift-${def.cssClass}${today ? ' today' : ''}${selected ? ' selected' : ''}`, onclick:() => showDetail(date)});
+      const cell = mk('button', {cls:`day-cell shift-${def.cssClass}${today ? ' today' : ''}${selected ? ' selected' : ''}`, onclick:event => showDetail(date,event.currentTarget)});
       cell.dataset.date = formatDateISO(date);
       cell.setAttribute('aria-label', `${formatDate(date)} ${getWeekdayCn(date)} ${name} ${shiftTimeText(name)}${lunar.day ? ` 农历${lunar.monthStr}${lunar.dayStr}` : ''}${term ? ` ${term}` : ''}${festival ? ` ${festival}` : ''}`);
       cell.setAttribute('aria-pressed', String(!!selected));
@@ -110,7 +111,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       const month = mk('button',{cls:`heatmap-month${m === viewMonth ? ' viewed-month' : ''}`,onclick:event => {
         const day = event.target.closest('[data-date]')?.dataset.date;
         navigateMonth(viewYear,m);
-        if (day) showDetail(Core.parseDate(day));
+        if (day) showDetail(Core.parseDate(day),event.currentTarget);
         if (!day || window.innerWidth > 640) $('calendarSection').scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'start'});
       }});
       month.setAttribute('aria-label',`查看${viewYear}年${m + 1}月排班`);
@@ -146,9 +147,9 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     $('upcomingList').replaceChildren(...Array.from({length:7},(_,index) => {
       const date = addDays(today,index), name = getShift(date), def = getShiftDef(name);
       const festival = getHoliday(date);
-      const row = mk('button',{cls:`upcoming-day${index === 0 ? ' is-today' : ''}`,onclick:() => {
+      const row = mk('button',{cls:`upcoming-day${index === 0 ? ' is-today' : ''}`,onclick:event => {
         navigateMonth(date.getFullYear(),date.getMonth());
-        showDetail(date);
+        showDetail(date,event.currentTarget);
       }});
       row.dataset.date = formatDateISO(date);
       row.setAttribute('aria-label',`${formatDate(date)} ${getWeekdayCn(date)}${festival ? ` ${festival}` : ''} ${name} 查看详情`);
@@ -191,17 +192,34 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     $('detailExtra').replaceChildren(...[
       ['连续同班',consecutive === null ? '整个周期' : `${consecutive} 天`],
       ['当月计划工时',`${calculateWorkHours(date.getFullYear(),date.getMonth())} h`],
-      ['距休息日',rest < 0 ? '周期内无休息日' : rest === 0 ? '就是今天' : `${rest} 天`],
+      ['距休息日',rest < 0 ? '周期内无休息日' : rest === 0 ? (isSameDay(date,new Date()) ? '就是今天' : '当天休息') : `${rest} 天`],
       ['周期位置',`${getCycleIndex(date) + 1} / ${schedule.cycle.length}`]
     ].map(([label,value]) => { const item = mk('div',{cls:'detail-extra-item'}); item.append(mk('p',{cls:'detail-extra-label',text:label}),mk('p',{cls:'detail-extra-value',text:value})); return item; }));
+    $('detailPrev').disabled = addDays(date,-1).getFullYear() < minYear();
+    $('detailNext').disabled = addDays(date,1).getFullYear() > maxYear();
   }
-  function showDetail(date) {
+  function showDetail(date,trigger = null) {
+    if (trigger) {
+      detailTrigger = trigger; detailReturnDate = formatDateISO(date);
+      detailReturnSource = trigger.classList.contains('upcoming-day') ? 'upcoming' : 'calendar';
+    }
     selectedDate = date; renderDetail(date);
     $('upcomingPanel').hidden = true;
     $('detailPanel').classList.add('show');
     reveal($('detailPanel'));
     updateSelection();
+    if (trigger) $('detailHeading').focus({preventScroll:true});
     if (window.innerWidth <= 640) $('detailPanel').scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'nearest'});
+  }
+  function moveDetail(amount) {
+    if (!selectedDate) return;
+    const date = addDays(selectedDate,amount);
+    if (date.getFullYear() < minYear() || date.getFullYear() > maxYear()) return;
+    selectedDate = date;
+    if (date.getFullYear() !== viewYear || date.getMonth() !== viewMonth) {
+      viewYear = date.getFullYear(); viewMonth = date.getMonth(); render();
+    } else { renderDetail(date); updateSelection(); }
+    $('detailAnnouncement').textContent = `${formatDate(date)} ${getWeekdayCn(date)}，${getShift(date)}，${shiftTimeText(getShift(date))}`;
   }
   function updateSelection() {
     for (const cell of $('daysGrid').querySelectorAll('button')) {
@@ -209,12 +227,23 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       cell.classList.toggle('selected',selected); cell.setAttribute('aria-pressed',String(selected));
     }
   }
-  function closeDetail() {
+  function closeDetail({restoreFocus = true} = {}) {
     const wasOpen = $('detailPanel').classList.contains('show');
+    const returnFocus = restoreFocus && wasOpen && $('detailPanel').contains(document.activeElement);
+    const closingDate = selectedDate && formatDateISO(selectedDate);
     $('detailPanel').classList.remove('show');
     $('upcomingPanel').hidden = false;
     selectedDate = null; updateSelection();
     if (wasOpen) reveal($('upcomingPanel'));
+    if (returnFocus) {
+      const fallback = detailReturnSource === 'upcoming' ? $('upcomingList') : $('daysGrid');
+      const target = detailTrigger?.isConnected ? detailTrigger : fallback.querySelector(`[data-date="${detailReturnDate}"]`)
+        || fallback.querySelector(`[data-date="${closingDate}"]`) || fallback.querySelector('button');
+      (target || $('monthTitle')).focus({preventScroll:true});
+      if (window.innerWidth <= 640) (target || $('monthTitle')).scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'nearest'});
+    }
+    detailTrigger = null; detailReturnDate = null; detailReturnSource = null;
+    $('detailAnnouncement').textContent = '';
   }
 
   function openYearOverview() {
@@ -235,7 +264,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   function navigateMonth(year, month) {
     const target = new Date(year,month,1);
     if (target.getFullYear() < minYear() || target.getFullYear() > maxYear()) return;
-    viewYear = target.getFullYear(); viewMonth = target.getMonth(); closeDetail(); render();
+    viewYear = target.getFullYear(); viewMonth = target.getMonth(); closeDetail({restoreFocus:false}); render();
   }
   function prevMonth() { navigateMonth(viewYear,viewMonth - 1); }
   function nextMonth() { navigateMonth(viewYear,viewMonth + 1); }
@@ -307,5 +336,5 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   }
   function pickerPrevYear() { if (pickerYear > minYear()) { pickerYear--; renderPicker(); } }
   function pickerNextYear() { if (pickerYear < maxYear()) { pickerYear++; renderPicker(); } }
-  return { renderStats, renderLegend, renderCalendar, renderHeatmap, renderNextShifts, renderUpcoming, render, renderDetail, showDetail, updateSelection, closeDetail, openYearOverview, minYear, maxYear, navigateMonth, prevMonth, nextMonth, backToToday, openPicker, closePicker, renderPicker, pickerPrevYear, pickerNextYear, get viewYear() { return viewYear; }, get viewMonth() { return viewMonth; }, get pickerYear() { return pickerYear; } };
+  return { renderStats, renderLegend, renderCalendar, renderHeatmap, renderNextShifts, renderUpcoming, render, renderDetail, showDetail, moveDetail, updateSelection, closeDetail, openYearOverview, minYear, maxYear, navigateMonth, prevMonth, nextMonth, backToToday, openPicker, closePicker, renderPicker, pickerPrevYear, pickerNextYear, get viewYear() { return viewYear; }, get viewMonth() { return viewMonth; }, get pickerYear() { return pickerYear; } };
 }

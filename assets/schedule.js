@@ -1,6 +1,6 @@
 import Core from './schedule-core.js?v=fc384b3c941b';
 import CalendarData from './calendar-data.js?v=3defcf37fd3d';
-import { DEFAULT_CYCLE, DEFAULT_SHIFT_DEFS } from './config.js?v=9715089d804c';
+import { DEFAULT_ANCHOR, DEFAULT_CYCLE, DEFAULT_SHIFT_DEFS } from './config.js?v=68f942b55cf8';
 Core.setLunarCalendar(CalendarData);
 export function createSchedule(storage, Date = globalThis.Date) {
   const { get: storageGet, set: storageSet, readJSON } = storage;
@@ -15,7 +15,7 @@ export function createSchedule(storage, Date = globalThis.Date) {
     if (legacyCycle !== null && !Core.validCycle(legacyCycle)) storage.markRecovered();
     if (legacyAnchor !== null && !Core.parseDate(legacyAnchor)) storage.markRecovered();
     return Core.normalizeConfig({
-      anchor: Core.parseDate(legacyAnchor) ? legacyAnchor : '2026-04-18',
+      anchor: Core.parseDate(legacyAnchor) ? legacyAnchor : DEFAULT_ANCHOR,
       cycle: Core.validCycle(legacyCycle) ? legacyCycle : DEFAULT_CYCLE,
       shiftDefs: legacyDefs && typeof legacyDefs === 'object' && !Array.isArray(legacyDefs) ? legacyDefs : DEFAULT_SHIFT_DEFS
     });
@@ -105,11 +105,11 @@ export function createSchedule(storage, Date = globalThis.Date) {
     return count;
   }
   function captureCurrentConfig() { return Core.normalizeConfig({ anchor:formatDateISO(ANCHOR_DATE),cycle:CYCLE,shiftDefs:SHIFT_DEFS }); }
-  function commitConfig(config) {
+  function commitConfig(config, {persist = true} = {}) {
     const normalized = Core.normalizeConfig(config);
     if (!normalized) return false;
     freezeConfig(normalized);
-    const saved = storageSet('qingzheng-config',JSON.stringify(normalized));
+    const saved = persist && storageSet('qingzheng-config',JSON.stringify(normalized));
     revision++; CYCLE = normalized.cycle; SHIFT_DEFS = normalized.shiftDefs; ANCHOR_DATE = Core.parseDate(normalized.anchor);
     return saved;
   }

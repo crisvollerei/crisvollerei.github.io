@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { createApp } from '../assets/app.js';
 import Core from '../assets/schedule-core.js';
+import { DEFAULT_ANCHOR, DEFAULT_CYCLE, DEFAULT_SHIFT_DEFS } from '../assets/config.js';
+import { MAX_BACKUP_TEXT_LENGTH, createBackup, parseBackup, createBackupText, parseBackupText } from '../assets/backup-format.js';
 const require = createRequire(import.meta.url);
 let JSDOM;
 try { ({ JSDOM } = require('jsdom')); }
@@ -234,6 +236,93 @@ test('settings cancellation discards additions, removals and in-form edits',t =>
   assert.equal(JSON.stringify(app.schedule.captureCurrentConfig()),before);
   app.settings.openSettings(); assert.equal(d.querySelector('[data-shift="白班"] [data-field="startTime"]').value,'08:00');
   assert.equal(d.querySelector('[data-shift="新班"]'),null);
+});
+test('default restoration first confirms and every cancellation preserves the unfinished draft',t => {
+  for (const cancel of ['button','escape','backdrop']) {
+    const {app,w,d} = boot(t); app.settings.openSettings();
+    d.querySelector('#anchorDate').value = '2026-10-19';
+    d.querySelector('#cyclePattern').value = '夜班 休息 夜班';
+    d.querySelector('[data-shift="夜班"] [data-field="startTime"]').value = '22:30';
+    d.querySelector('#shiftName').value = '还没添加'; app.settings.settingsError('尚未完成的编辑');
+    const snapshot = () => JSON.stringify([d.querySelector('#anchorDate').value,d.querySelector('#cyclePattern').value,
+      d.querySelector('#shiftName').value,app.settings.readDraftRows(),d.querySelector('#settingsError').textContent]);
+    const before = snapshot(), persisted = {...w.localStorage};
+    const button = d.querySelector('[data-action="restoreDefaultSettings"]'); button.focus(); button.click();
+    assert.equal(app.ui.activeDialog,'confirmModal'); assert.equal(snapshot(),before);
+    assert.equal(d.querySelector('#confirmTitle').textContent,'恢复默认排班');
+    assert.match(d.querySelector('#confirmDescription').textContent,/已保存方案不会删除/);
+    if (cancel === 'button') d.querySelector('#confirmCancel').click();
+    else if (cancel === 'escape') d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+    else d.querySelector('#confirmModal').click();
+    assert.equal(app.ui.activeDialog,'settingsModal'); assert.equal(d.activeElement,button);
+    assert.equal(snapshot(),before); assert.deepEqual({...w.localStorage},persisted);
+    assert.equal(app.liveTimer,null);
+  }
+});
+test('restoring defaults repairs an invalid draft without touching live data, presets or preferences',t => {
+  const config = Core.normalizeConfig({anchor:'2026-10-01',cycle:['自定义'],shiftDefs:{'自定义':{isWork:true,startTime:'22:00',endTime:'06:00',crossDay:true}}});
+  const preset = {...config,id:'keep-me',name:'原有方案'};
+  const {app,w,d} = boot(t,{storage:{'qingzheng-config':JSON.stringify(config),'qingzheng-presets':JSON.stringify([preset]),
+    'qingzheng-theme':'dark','qingzheng-theme-mode':'manual','qingzheng-anchor':'2025-01-01'}});
+  const before = {...w.localStorage}, presets = JSON.stringify(app.settings.presets);
+  app.settings.openSettings(); d.querySelector('#anchorDate').value = ''; d.querySelector('#cyclePattern').value = '';
+  d.querySelector('#shiftName').value = '未完成'; app.settings.saveSettings();
+  assert.equal(d.querySelector('#settingsError').hidden,false);
+  d.querySelector('[data-action="restoreDefaultSettings"]').click(); d.querySelector('#confirmAccept').click();
+  assert.equal(app.ui.activeDialog,'settingsModal'); assert.equal(app.liveTimer,null);
+  assert.equal(d.querySelector('#anchorDate').value,DEFAULT_ANCHOR);
+  assert.equal(d.querySelector('#cyclePattern').value,DEFAULT_CYCLE.join(' '));
+  assert.deepEqual(app.settings.readDraftRows(),Core.normalizeDefs(DEFAULT_SHIFT_DEFS));
+  assert.equal(d.querySelectorAll('#cyclePreviewDays li').length,DEFAULT_CYCLE.length);
+  assert.equal(d.querySelector('#shiftName').value,''); assert.equal(d.querySelector('#settingsError').hidden,true);
+  assert.equal(d.querySelector('#settingsStatus').hidden,false); assert.match(d.querySelector('#settingsStatus').textContent,/尚未保存/);
+  assert.equal(d.activeElement,d.querySelector('#settingsStatus'));
+  assert.deepEqual(app.schedule.captureCurrentConfig(),config); assert.deepEqual({...w.localStorage},before);
+  assert.equal(JSON.stringify(app.settings.presets),presets);
+  d.querySelector('#settingsModal [data-action="closeSettings"]').click(); app.settings.openSettings();
+  assert.equal(d.querySelector('#cyclePattern').value,'自定义'); assert.equal(d.querySelector('#anchorDate').value,config.anchor);
+  assert.equal(d.querySelector('#settingsStatus').hidden,true);
+  assert.deepEqual(app.settings.readDraftRows(),config.shiftDefs);
+});
+test('saving restored defaults matches first-run settings, survives reload and never mutates shared defaults',t => {
+  const config = Core.normalizeConfig({anchor:'2026-10-01',cycle:['自定义'],shiftDefs:{}});
+  const preset = {...config,id:'keep-me',name:'原有方案'};
+  const {app,w,d} = boot(t,{storage:{'qingzheng-config':JSON.stringify(config),'qingzheng-presets':JSON.stringify([preset])}});
+  const definitions = JSON.stringify(DEFAULT_SHIFT_DEFS), cycle = [...DEFAULT_CYCLE];
+  const oldPresets = w.localStorage.getItem('qingzheng-presets');
+  app.settings.openSettings(); app.settings.restoreDefaultSettings(); d.querySelector('#confirmAccept').click();
+  d.querySelector('[data-shift="白班"] [data-field="startTime"]').value = '07:15';
+  app.settings.restoreDefaultSettings(); d.querySelector('#confirmAccept').click();
+  assert.equal(d.querySelector('[data-shift="白班"] [data-field="startTime"]').value,'08:00');
+  assert.equal(JSON.stringify(DEFAULT_SHIFT_DEFS),definitions); assert.deepEqual(DEFAULT_CYCLE,cycle);
+  assert.deepEqual(app.schedule.captureCurrentConfig(),config);
+  d.querySelector('[data-action="saveSettings"]').click();
+  const defaults = Core.normalizeConfig({anchor:DEFAULT_ANCHOR,cycle:DEFAULT_CYCLE,shiftDefs:DEFAULT_SHIFT_DEFS});
+  assert.equal(app.ui.activeDialog,null); assert.deepEqual(app.schedule.captureCurrentConfig(),defaults);
+  assert.equal(w.localStorage.getItem('qingzheng-presets'),oldPresets);
+  assert.deepEqual(JSON.parse(w.localStorage.getItem('qingzheng-config')),JSON.parse(JSON.stringify(defaults)));
+  const reload = boot(t,{storage:{...w.localStorage}});
+  assert.deepEqual(reload.app.schedule.captureCurrentConfig(),defaults); assert.equal(reload.app.settings.presets.length,1);
+  assert.deepEqual(boot(t).app.schedule.captureCurrentConfig(),defaults,'Recovery and first-run defaults share one source');
+});
+test('editing a restored draft clears the reset status and allows adjusting its anchor before saving',t => {
+  const {app,w,d} = boot(t); app.settings.openSettings();
+  app.settings.restoreDefaultSettings(); d.querySelector('#confirmAccept').click();
+  const input = d.querySelector('#anchorDate'); input.value = '2026-10-19'; input.dispatchEvent(new w.Event('input',{bubbles:true}));
+  assert.equal(d.querySelector('#settingsStatus').hidden,true);
+  assert.match(d.querySelector('#cyclePreviewDays li').textContent,/10\/19/);
+  app.settings.saveSettings(); assert.equal(app.schedule.captureCurrentConfig().anchor,'2026-10-19');
+});
+test('default restoration is scoped to the settings draft and preserves persisted data on a save failure',t => {
+  const config = Core.normalizeConfig({anchor:'2026-10-01',cycle:['原排班'],shiftDefs:{}});
+  const persisted = JSON.stringify(config), {app,w,d} = boot(t,{storage:{'qingzheng-config':persisted}});
+  app.settings.restoreDefaultSettings(); assert.equal(app.ui.activeDialog,null);
+  app.settings.openSettings(); app.settings.restoreDefaultSettings(); d.querySelector('#confirmAccept').click();
+  w.Storage.prototype.setItem = () => {throw new Error('Quota exceeded');};
+  app.settings.saveSettings();
+  assert.deepEqual(app.schedule.cycle,DEFAULT_CYCLE); assert.equal(w.localStorage.getItem('qingzheng-config'),persisted);
+  assert.equal(d.querySelector('#storageNotice').hidden,false); assert.match(d.querySelector('#toast').textContent,/暂时无法保存/);
+  app.settings.restoreDefaultSettings(); assert.equal(app.ui.activeDialog,null);
 });
 test('settings validate work times and save all fields in one canonical record',t => {
   const {w, d, app} = boot(t); app.settings.openSettings();
@@ -676,6 +765,52 @@ test('saved automatic preference takes precedence over an old manual theme value
   assert.equal(old.d.documentElement.dataset.theme,'dark');
   assert.equal(old.d.querySelector('#themeAuto').getAttribute('aria-pressed'),'false');
 });
+test('the automatic theme button toggles off without changing the current theme and stays off after reload',t => {
+  for (const [now,later,theme] of [
+    ['2026-10-16T06:59:59','2026-10-16T07:00:00','dark'],
+    ['2026-10-16T18:59:59','2026-10-16T19:00:00','light']
+  ]) {
+    const {d,w,app,setNow} = boot(t,{now});
+    const button = d.querySelector('#themeAuto');
+    assert.equal(button.getAttribute('aria-label'),'关闭昼夜自动主题');
+    button.click();
+    assert.equal(d.documentElement.dataset.theme,theme);
+    assert.equal(button.getAttribute('aria-pressed'),'false');
+    assert.equal(button.getAttribute('aria-label'),'启用昼夜自动主题');
+    assert.match(button.title,/已关闭/);
+    assert.match(d.querySelector('#toast').textContent,/已关闭自动主题，保持/);
+    assert.equal(w.localStorage.getItem('qingzheng-theme-mode'),'manual');
+    assert.equal(w.localStorage.getItem('qingzheng-theme'),theme);
+    setNow(later); app.updateLiveClockAndCountdown();
+    assert.equal(d.documentElement.dataset.theme,theme,'The time boundary no longer switches themes');
+    const reloaded = boot(t,{now:later,storage:{'qingzheng-theme':theme,'qingzheng-theme-mode':w.localStorage.getItem('qingzheng-theme-mode')}});
+    assert.equal(reloaded.d.documentElement.dataset.theme,theme);
+    assert.equal(reloaded.d.querySelector('#themeAuto').getAttribute('aria-pressed'),'false');
+    button.click();
+    assert.equal(button.getAttribute('aria-pressed'),'true');
+    assert.equal(button.getAttribute('aria-label'),'关闭昼夜自动主题');
+    assert.match(button.title,/已开启/);
+    assert.equal(w.localStorage.getItem('qingzheng-theme-mode'),'auto');
+    assert.notEqual(d.documentElement.dataset.theme,theme,'Re-enabling immediately follows the actual time');
+  }
+});
+test('automatic theme toggling respects manual theme changes and unavailable storage',t => {
+  for (const blocked of [false,true]) {
+    const {d,app,setNow} = boot(t,{now:'2026-10-16T12:00:00',blocked});
+    const button = d.querySelector('#themeAuto');
+    button.click(); button.click();
+    assert.equal(button.getAttribute('aria-pressed'),'true');
+    d.querySelector('#themeToggle').click();
+    assert.equal(d.documentElement.dataset.theme,'dark');
+    assert.equal(button.getAttribute('aria-pressed'),'false');
+    assert.equal(button.getAttribute('aria-label'),'启用昼夜自动主题');
+    button.click(); assert.equal(d.documentElement.dataset.theme,'light');
+    button.click(); assert.equal(d.documentElement.dataset.theme,'light');
+    setNow('2026-10-16T20:00:00'); app.updateLiveClockAndCountdown();
+    assert.equal(d.documentElement.dataset.theme,'light');
+    if (blocked) assert.equal(d.querySelector('#storageNotice').hidden,false);
+  }
+});
 test('reduced motion keeps navigation, dialogs, details and year expansion fully usable',t => {
   const {w, d, app}=boot(t,{reducedMotion:true});
   app.views.nextMonth();app.views.prevMonth();app.views.showDetail(new w.Date());app.views.closeDetail();
@@ -1088,4 +1223,596 @@ test('an optional Android bridge failure cannot prevent a web configuration save
   assert.equal(app.settings.commitConfig({anchor:'2026-04-18',cycle:['休息'],shiftDefs:{}}),true);
   assert.deepEqual(JSON.parse(w.localStorage.getItem('qingzheng-config')).cycle,['休息']);
   assert.equal(d.querySelector('#toast').textContent,'网页设置已更新，原生应用同步暂时失败');
+});
+test('cycle quick entry, undo and the dated preview only change the settings draft',t => {
+  const {app,d,w} = boot(t);
+  const original = app.schedule.captureCurrentConfig();
+  app.settings.openSettings();
+  assert.equal(d.querySelectorAll('#cyclePreviewDays li').length,8);
+  assert.match(d.querySelector('#cyclePreviewDays li').textContent,/4\/18/);
+  assert.match(d.querySelector('#cycleSummary').textContent,/工作 4 天 · 休息 4 天/);
+  d.querySelector('[aria-label="向周期末尾添加一天中班"]').click();
+  assert.equal(d.querySelectorAll('#cyclePreviewDays li').length,9);
+  d.querySelector('#cycleRemoveLast').click();
+  assert.equal(d.querySelectorAll('#cyclePreviewDays li').length,8);
+  assert.equal(w.localStorage.getItem('qingzheng-config'),null);
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  app.settings.closeSettings();
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+});
+test('cycle preview handles empty input, unknown names, work flags and bounded long cycles',t => {
+  const {app,d,w} = boot(t);
+  app.settings.openSettings();
+  const input = d.querySelector('#cyclePattern');
+  input.value = ''; input.dispatchEvent(new w.Event('input'));
+  assert.equal(d.querySelector('#cycleRemoveLast').disabled,true);
+  assert.equal(d.querySelectorAll('#cyclePreviewDays li').length,0);
+  input.value = '休息 新班次'; input.dispatchEvent(new w.Event('input'));
+  assert.match(d.querySelector('#cyclePreviewHint').textContent,/新班次/);
+  assert.equal(d.querySelectorAll('.cycle-preview-day.is-undefined').length,1);
+  input.value = Array(3660).fill('白班').join(' '); input.dispatchEvent(new w.Event('input'));
+  assert.equal(d.querySelectorAll('#cyclePreviewDays li').length,16);
+  assert.match(d.querySelector('#cycleSummary').textContent,/3660 天/);
+  const work = d.querySelector('[data-shift="白班"] [data-field="isWork"]');
+  work.checked = false; work.dispatchEvent(new w.Event('change',{bubbles:true}));
+  assert.match(d.querySelector('#cycleSummary').textContent,/休息 3660 天/);
+  const style = d.querySelector('[data-shift="白班"] select');
+  style.value = 'evening'; style.dispatchEvent(new w.Event('change',{bubbles:true}));
+  assert.equal(d.querySelector('#cycleQuickAdd [data-cycle-shift="白班"]').classList.contains('evening'),true);
+  app.settings.appendCycleShift('白班');
+  assert.equal(input.value.split(' ').length,3660);
+});
+test('detail navigation crosses months and years without changing the schedule or today',t => {
+  const {app,d,w} = boot(t);
+  app.views.navigateMonth(2026,11);
+  d.querySelector('#daysGrid [data-date="2026-12-31"]').click();
+  assert.equal(d.activeElement.id,'detailHeading');
+  const next = d.querySelector('#detailNext'); next.focus(); next.click();
+  assert.equal(app.views.viewYear,2027); assert.equal(app.views.viewMonth,0);
+  assert.equal(d.querySelector('#daysGrid .selected').dataset.date,'2027-01-01');
+  assert.equal(d.activeElement,next,'Navigation buttons retain focus');
+  assert.match(d.querySelector('#detailAnnouncement').textContent,/2027年1月1日/);
+  assert.match(d.querySelector('#todayDate').textContent,/10月16日/);
+  d.querySelector('#detailPrev').click();
+  assert.equal(app.views.viewYear,2026); assert.equal(app.views.viewMonth,11);
+  app.views.navigateMonth(app.views.minYear(),0); app.views.showDetail(new w.Date(2025,0,1));
+  assert.equal(d.querySelector('#detailPrev').disabled,true);
+  app.views.moveDetail(-1); assert.match(d.querySelector('#detailHeading').textContent,/1月1日/);
+  app.views.navigateMonth(app.views.maxYear(),11); app.views.showDetail(new w.Date(2027,11,31));
+  assert.equal(d.querySelector('#detailNext').disabled,true);
+});
+test('closing details restores the original calendar or upcoming date and avoids misleading rest copy',t => {
+  const {app,d} = boot(t);
+  const cell = d.querySelector('#daysGrid [data-date="2026-10-01"]');
+  cell.click(); d.querySelector('[data-action="closeDetail"]').click();
+  assert.equal(d.activeElement,cell);
+  const upcoming = d.querySelector('#upcomingList [data-date="2026-10-18"]');
+  upcoming.click(); assert.match(d.querySelector('#detailExtra').textContent,/当天休息/);
+  d.querySelector('#detailNext').click();
+  d.querySelector('[data-action="closeDetail"]').click();
+  assert.equal(d.activeElement.dataset.date,'2026-10-18');
+  assert.equal(d.activeElement.closest('#upcomingList')?.id,'upcomingList');
+});
+test('keyboard scrolling inside the companion does not switch calendar months',t => {
+  const {d,w,app} = boot(t);
+  const message = d.querySelector('#companionMessage'); message.focus();
+  for (const key of ['ArrowLeft','ArrowRight','t','End']) message.dispatchEvent(new w.KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));
+  assert.equal(app.views.viewMonth,9);
+  assert.equal(d.querySelector('#detailPanel').classList.contains('show'),false);
+});
+test('closing a detail after crossing a month keeps the current month and returns to its inspected day',t => {
+  const {app,d} = boot(t);
+  d.querySelector('#daysGrid [data-date="2026-10-31"]').click();
+  d.querySelector('#detailNext').click();
+  d.querySelector('.detail-back').click();
+  assert.equal(app.views.viewMonth,10);
+  assert.equal(d.activeElement.dataset.date,'2026-11-01');
+});
+test('backup dialog pauses live updates, traps focus and restores its opening control',t => {
+  const {app,d,w} = boot(t);
+  const opener = d.querySelector('[data-action="openDataTools"]'); opener.focus(); opener.click();
+  assert.equal(app.ui.activeDialog,'dataModal');
+  assert.equal(app.liveTimer,null);
+  assert.equal(d.querySelector('#dataModal').classList.contains('input-view'),true);
+  assert.equal(d.querySelector('#backupTextInput').maxLength,MAX_BACKUP_TEXT_LENGTH);
+  d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}));
+  assert.equal(d.activeElement.getAttribute('aria-label'),'关闭备份与恢复');
+  d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+  assert.equal(app.ui.activeDialog,null); assert.equal(d.activeElement,opener);
+  assert.notEqual(app.liveTimer,null);
+});
+test('restoring a backup keeps the old schedule, presets and conflicting names with fresh IDs',t => {
+  const {app,w} = boot(t);
+  const original = app.schedule.captureCurrentConfig();
+  app.settings.saveAsPreset(); w.document.querySelector('#presetName').value = '日常'; app.settings.submitPreset();
+  const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+  const backup = parseBackup(JSON.stringify(createBackup(incoming,[{...incoming,name:'日常'}],'now')));
+  assert.equal(app.settings.restoreBackup(backup),true);
+  assert.deepEqual(app.schedule.cycle,['休息']);
+  assert.deepEqual(app.settings.presets.map(preset => preset.name),['日常','日常（1）']);
+  assert.equal(new Set(app.settings.presets.map(preset => preset.id)).size,2);
+  app.settings.applyPreset(app.settings.presets[0].id);
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  app.settings.restoreBackup(backup);
+  assert.equal(app.settings.presets.length,2,'Repeated imports also reuse a previously renamed conflicting preset');
+  app.settings.applyPreset(app.settings.presets[0].id);
+  const restored = boot(t,{storage:{'qingzheng-config':w.localStorage.getItem('qingzheng-config'),'qingzheng-presets':w.localStorage.getItem('qingzheng-presets')}});
+  assert.deepEqual(restored.app.schedule.captureCurrentConfig(),original);
+  assert.equal(restored.app.settings.presets.length,2);
+});
+test('restoring a backup preserves an unsaved current schedule and does not duplicate identical named presets',t => {
+  const {app} = boot(t);
+  const current = app.schedule.captureCurrentConfig();
+  const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+  const backup = {config:incoming,presets:[{...incoming,name:'休息方案'}]};
+  app.settings.restoreBackup(backup);
+  assert.equal(app.settings.presets.length,2);
+  assert.deepEqual(Core.normalizeConfig(app.settings.presets[0]),current);
+  app.settings.restoreBackup(backup);
+  assert.equal(app.settings.presets.length,2);
+});
+test('a failed recovery-preset write never overwrites the previously persisted schedule',t => {
+  const {app,w,d} = boot(t);
+  app.settings.commitConfig(app.schedule.captureCurrentConfig());
+  const old = w.localStorage.getItem('qingzheng-config'), setItem = w.Storage.prototype.setItem;
+  w.Storage.prototype.setItem = function(key,value) {
+    if (key === 'qingzheng-presets') throw new Error('Quota exceeded');
+    return setItem.call(this,key,value);
+  };
+  const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+  assert.equal(app.settings.restoreBackup({config:incoming,presets:[]}),false);
+  assert.deepEqual(app.schedule.cycle,['休息'],'Session remains usable');
+  assert.equal(w.localStorage.getItem('qingzheng-config'),old,'Persisted original remains safe');
+  assert.equal(d.querySelector('#storageNotice').hidden,false);
+});
+test('file import previews first, cancellation is harmless and confirmation restores safely',async t => {
+  const {app,w,d} = boot(t);
+  app.dataTools.openDataTools();
+  const original = app.schedule.captureCurrentConfig();
+  const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+  const file = new w.File([JSON.stringify(createBackup(incoming,[],'now'))],'backup.json',{type:'application/json'});
+  Object.defineProperty(d.querySelector('#backupFile'),'files',{value:[file],configurable:true});
+  await app.dataTools.readBackupFile();
+  assert.equal(d.querySelector('#importPreview').hidden,false);
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  app.dataTools.importBackup(); assert.equal(app.ui.activeDialog,'confirmModal');
+  assert.equal(d.querySelector('#confirmAccept').textContent,'导入并应用');
+  d.querySelector('#confirmCancel').click(); assert.equal(app.ui.activeDialog,'dataModal');
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  app.dataTools.importBackup(); d.querySelector('#confirmAccept').click();
+  assert.equal(app.ui.activeDialog,null); assert.deepEqual(app.schedule.cycle,['休息']);
+  assert.deepEqual(Core.normalizeConfig(app.settings.presets[0]),original);
+});
+test('invalid files and a read finishing after closing never change stored data',async t => {
+  const {app,w,d} = boot(t);
+  app.dataTools.openDataTools();
+  const input = d.querySelector('#backupFile');
+  Object.defineProperty(input,'files',{value:[new w.File(['bad'],'bad.json')],configurable:true});
+  await app.dataTools.readBackupFile();
+  assert.equal(d.querySelector('#backupError').hidden,false);
+  assert.equal(d.querySelector('#importPreview').hidden,true);
+  const readers = [];
+  w.FileReader = class { constructor(){readers.push(this);} readAsText(){} };
+  const reading = app.dataTools.readBackupFile(); app.dataTools.closeDataTools();
+  readers[0].result = JSON.stringify(createBackup(app.schedule.captureCurrentConfig(),[],'now')); readers[0].onload();
+  await reading;
+  assert.equal(d.querySelector('#importPreview').hidden,true);
+  assert.equal(w.localStorage.getItem('qingzheng-config'),null);
+});
+test('imported display names are text in the preview and all restored views',async t => {
+  const {app,w,d} = boot(t);
+  const name = '<img/onerror=alert(1)>';
+  const config = Core.normalizeConfig({anchor:'2026-10-16',cycle:[name],shiftDefs:{}});
+  const content = JSON.stringify(createBackup(config,[{...config,name:'<b>备份方案</b>'}],'now'));
+  app.dataTools.openDataTools();
+  Object.defineProperty(d.querySelector('#backupFile'),'files',{value:[new w.File([content],'backup.json')],configurable:true});
+  await app.dataTools.readBackupFile();
+  assert.equal(d.querySelector('#importCycle').textContent,name);
+  app.dataTools.importBackup(); d.querySelector('#confirmAccept').click();
+  assert.equal(d.querySelectorAll('img').length,initialImageCount);
+  assert.equal(d.querySelector('#todayShift').textContent.includes(name),true);
+  assert.ok([...d.querySelectorAll('.preset-btn')].some(button => button.textContent === '<b>备份方案</b>'));
+});
+test('backup downloads the current session without changing local data and reports unsupported downloads',async t => {
+  const {app,w,d} = boot(t);
+  app.dataTools.openDataTools();
+  const before = {...w.localStorage}, links = [];
+  let blob;
+  w.URL.createObjectURL = value => {blob=value;return 'blob:local-backup';};
+  w.HTMLAnchorElement.prototype.click = function(){links.push(this.download);};
+  app.dataTools.exportBackup();
+  const text = await new Promise(resolve => {const reader = new w.FileReader();reader.onload=()=>resolve(reader.result);reader.readAsText(blob);});
+  assert.deepEqual(parseBackup(text).config,app.schedule.captureCurrentConfig());
+  assert.match(links[0],/2026-10-16\.json$/);
+  assert.deepEqual({...w.localStorage},before);
+  assert.match(d.querySelector('#backupStatus').textContent,/下载/);
+  w.URL.createObjectURL = () => {throw new Error('Unsupported');};
+  app.dataTools.exportBackup(); assert.equal(d.querySelector('#backupError').hidden,false);
+});
+test('copying backup text exports the entire current session without writing data or reading the clipboard',async t => {
+  const {app,w,d} = boot(t); let copied;
+  app.settings.saveAsPreset(); d.querySelector('#presetName').value = '🐟我的方案'; app.settings.submitPreset();
+  Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async text=>{copied=text;},readText:()=>{throw new Error('Never read automatically');}}});
+  const before = {...w.localStorage};
+  app.dataTools.openDataTools(); await app.dataTools.copyBackupText();
+  const parsed = parseBackupText(copied);
+  assert.deepEqual(parsed.config,app.schedule.captureCurrentConfig());
+  assert.equal(parsed.presets.length,1); assert.equal(parsed.presets[0].name,'🐟我的方案');
+  assert.equal(d.querySelector('#backupTextOutput').value,copied);
+  assert.equal(d.querySelector('#backupTextOutput').readOnly,true);
+  assert.equal(d.querySelector('#backupTextExport').hidden,false);
+  assert.match(d.querySelector('#backupTextSize').textContent,/未加密/);
+  assert.match(d.querySelector('#backupTextCopyStatus').textContent,/已复制/);
+  assert.deepEqual({...w.localStorage},before);
+  app.dataTools.selectBackupText();
+  assert.equal(d.activeElement,d.querySelector('#backupTextOutput'));
+  assert.equal(d.activeElement.selectionStart,0); assert.equal(d.activeElement.selectionEnd,copied.length);
+  app.dataTools.closeDataTools();
+  assert.equal(d.querySelector('#backupTextOutput').value,'');
+});
+test('unavailable or denied clipboard access leaves a complete selectable manual backup',async t => {
+  for (const denied of [false,true]) {
+    const {app,w,d} = boot(t);
+    if (denied) Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async()=>{throw new Error('Permission denied');}}});
+    app.dataTools.openDataTools(); await app.dataTools.copyBackupText();
+    const output = d.querySelector('#backupTextOutput');
+    assert.deepEqual(parseBackupText(output.value).config,app.schedule.captureCurrentConfig());
+    assert.equal(d.activeElement,output); assert.equal(output.selectionEnd,output.value.length);
+    assert.match(d.querySelector('#backupTextCopyStatus').textContent,/未允许自动复制/);
+    assert.equal(d.querySelector('#backupError').hidden,true);
+    assert.equal(w.localStorage.getItem('qingzheng-config'),null);
+  }
+});
+test('late clipboard callbacks cannot update a closed, reopened or newer export',async t => {
+  const {app,w,d} = boot(t), writes = [];
+  Object.defineProperty(w.navigator,'clipboard',{value:{writeText:()=>new Promise((resolve,reject)=>writes.push({resolve,reject}))}});
+  app.dataTools.openDataTools(); const first = app.dataTools.copyBackupText();
+  app.dataTools.closeDataTools(); app.dataTools.openDataTools();
+  writes[0].reject(new Error('Late denial')); await first;
+  assert.equal(d.querySelector('#backupTextExport').hidden,true);
+  assert.equal(d.querySelector('#backupTextCopyStatus').textContent,'');
+  const second = app.dataTools.copyBackupText(), third = app.dataTools.copyBackupText();
+  writes[2].resolve(); await third; const status = d.querySelector('#backupTextCopyStatus').textContent;
+  writes[1].reject(new Error('Older request')); await second;
+  assert.equal(d.querySelector('#backupTextCopyStatus').textContent,status);
+});
+test('a clipboard denial during nested confirmation reports a fallback without stealing confirmation focus',async t => {
+  const {app,w,d} = boot(t); let reject;
+  Object.defineProperty(w.navigator,'clipboard',{value:{writeText:()=>new Promise((resolve,fail)=>{reject=fail;})}});
+  app.dataTools.openDataTools();
+  const copying = app.dataTools.copyBackupText();
+  d.querySelector('#backupTextInput').value = createBackupText(createBackup(app.schedule.captureCurrentConfig(),[],'now'));
+  app.dataTools.previewBackupText(); app.dataTools.importBackup();
+  const focus = d.activeElement;
+  reject(new Error('Late denial')); await copying;
+  assert.equal(app.ui.activeDialog,'confirmModal'); assert.equal(d.activeElement,focus);
+  d.querySelector('#confirmCancel').click();
+  assert.match(d.querySelector('#backupTextCopyStatus').textContent,/未允许自动复制/);
+  assert.doesNotMatch(d.querySelector('#backupTextCopyStatus').textContent,/正在/);
+});
+test('text restore requires explicit preview and confirmation, preserves the original and persists after reload',t => {
+  const {app,w,d} = boot(t), original = app.schedule.captureCurrentConfig(), before = {...w.localStorage};
+  const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+  app.dataTools.openDataTools();
+  const input = d.querySelector('#backupTextInput');
+  input.value = createBackupText(createBackup(incoming,[{...incoming,name:'手机备份🐟'}],'now'));
+  input.dispatchEvent(new w.Event('input',{bubbles:true}));
+  assert.equal(d.querySelector('#importPreview').hidden,true);
+  app.dataTools.importBackup(); assert.equal(app.ui.activeDialog,'dataModal');
+  d.querySelector('[data-action="previewBackupText"]').click();
+  assert.equal(d.querySelector('#importPreview').hidden,false);
+  assert.equal(d.activeElement,d.querySelector('#importPreviewTitle'));
+  assert.match(d.querySelector('#importSource').textContent,/粘贴文本/);
+  assert.deepEqual({...w.localStorage},before);
+  app.dataTools.importBackup(); d.querySelector('#confirmCancel').click();
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  app.dataTools.importBackup(); d.querySelector('#confirmAccept').click();
+  assert.deepEqual(app.schedule.cycle,['休息']); assert.equal(app.settings.presets.length,2);
+  assert.deepEqual(Core.normalizeConfig(app.settings.presets[0]),original);
+  assert.equal(input.value,'');
+  const reloaded = boot(t,{storage:{...w.localStorage}});
+  assert.deepEqual(reloaded.app.schedule.cycle,['休息']); assert.equal(reloaded.app.settings.presets.length,2);
+});
+test('editing text after preview or while confirming invalidates the pending restore',t => {
+  const {app,w,d} = boot(t), original = app.schedule.captureCurrentConfig();
+  const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+  app.dataTools.openDataTools(); const input = d.querySelector('#backupTextInput');
+  const text = createBackupText(createBackup(incoming,[],'now'));
+  input.value = text; app.dataTools.previewBackupText();
+  input.value += 'broken'; input.dispatchEvent(new w.Event('input',{bubbles:true}));
+  assert.equal(d.querySelector('#importPreview').hidden,true);
+  app.dataTools.importBackup(); assert.equal(app.ui.activeDialog,'dataModal');
+  input.value = text; app.dataTools.previewBackupText(); app.dataTools.importBackup();
+  input.value += ' '; // Programmatic changes without input events must also be checked on confirmation.
+  d.querySelector('#confirmAccept').click();
+  assert.equal(app.ui.activeDialog,'dataModal'); assert.match(d.querySelector('#backupError').textContent,/重新预览/);
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  assert.equal(w.localStorage.getItem('qingzheng-config'),null);
+});
+test('invalid or future text hides a previous preview and cannot import or persist anything',t => {
+  const {app,w,d} = boot(t), original = app.schedule.captureCurrentConfig();
+  app.dataTools.openDataTools(); const input = d.querySelector('#backupTextInput');
+  const text = createBackupText(createBackup(original,[],'now'));
+  for (const invalid of ['',text.slice(0,-1),text.replace('QZB1.','QZB2.')]) {
+    input.value = text; app.dataTools.previewBackupText();
+    assert.equal(d.querySelector('#importPreview').hidden,false);
+    input.value = invalid; app.dataTools.previewBackupText();
+    assert.equal(d.querySelector('#importPreview').hidden,true); assert.equal(d.querySelector('#backupError').hidden,false);
+    assert.equal(d.activeElement,d.querySelector('#backupError'));
+    app.dataTools.importBackup(); assert.equal(app.ui.activeDialog,'dataModal');
+  }
+  assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  assert.equal(w.localStorage.getItem('qingzheng-config'),null);
+});
+test('pasting raw JSON uses the same preview and storage-failure recovery as files',t => {
+  const {app,w,d} = boot(t), original = app.schedule.captureCurrentConfig();
+  app.settings.commitConfig(original); const persisted = w.localStorage.getItem('qingzheng-config');
+  const setItem = w.Storage.prototype.setItem;
+  w.Storage.prototype.setItem = function(key,value) {
+    if (key === 'qingzheng-presets') throw new Error('Full storage');
+    setItem.call(this,key,value);
+  };
+  const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+  app.dataTools.openDataTools(); d.querySelector('#backupTextInput').value = JSON.stringify(createBackup(incoming,[],'now'));
+  app.dataTools.previewBackupText(); app.dataTools.importBackup(); d.querySelector('#confirmAccept').click();
+  assert.deepEqual(app.schedule.cycle,['休息']); assert.equal(w.localStorage.getItem('qingzheng-config'),persisted);
+  assert.match(d.querySelector('#toast').textContent,/未能完整保存/);
+});
+test('switching from an unfinished file read to pasted text discards stale success and error callbacks',async t => {
+  for (const fail of [false,true]) {
+    const {app,w,d} = boot(t), readers = [];
+    w.FileReader = class { constructor(){readers.push(this);} readAsText(){} };
+    app.dataTools.openDataTools();
+    Object.defineProperty(d.querySelector('#backupFile'),'files',{value:[new w.File(['old'],'backup.json')],configurable:true});
+    const reading = app.dataTools.readBackupFile();
+    const incoming = Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}});
+    const input = d.querySelector('#backupTextInput'); input.value = createBackupText(createBackup(incoming,[],'now'));
+    input.dispatchEvent(new w.Event('input',{bubbles:true})); app.dataTools.previewBackupText();
+    if (fail) readers[0].onerror();
+    else { readers[0].result = JSON.stringify(createBackup(app.schedule.captureCurrentConfig(),[],'old')); readers[0].onload(); }
+    await reading;
+    assert.match(d.querySelector('#importSource').textContent,/粘贴文本/);
+    assert.equal(d.querySelector('#backupError').hidden,true);
+    app.dataTools.importBackup(); d.querySelector('#confirmAccept').click();
+    assert.deepEqual(app.schedule.cycle,['休息']);
+  }
+});
+test('saving a preset appends only its own controls and preserves all existing preset buttons',t => {
+  const config = Core.normalizeConfig({anchor:'2026-04-18',cycle:['休息'],shiftDefs:{}});
+  const presets = Array.from({length:100},(_,index) => ({...config,id:`preset_${index}`,name:`方案${index}`}));
+  const {app,d,w} = boot(t,{storage:{'qingzheng-config':JSON.stringify(config),'qingzheng-presets':JSON.stringify(presets)}});
+  const bar = d.querySelector('#presetBar'), originals = [...bar.querySelectorAll('.preset-group')];
+  const observer = new w.MutationObserver(()=>{}); observer.observe(bar,{subtree:true,childList:true,attributes:true});
+  app.settings.saveAsPreset(); d.querySelector('#presetName').value = '新增方案'; app.settings.submitPreset();
+  const records = observer.takeRecords();
+  assert.equal(records.flatMap(record=>[...record.removedNodes]).length,0,'Saving must not rebuild the existing bar');
+  assert.equal(records.flatMap(record=>[...record.addedNodes]).filter(node=>node.classList?.contains('preset-group')).length,1);
+  assert.deepEqual([...bar.querySelectorAll('.preset-group')].slice(0,100),originals);
+  assert.equal(bar.querySelectorAll('.preset-group.active').length,1);
+  assert.equal(bar.querySelector('.preset-group.active .preset-btn').textContent,'新增方案');
+  app.settings.renderPresetBar();
+  assert.deepEqual(observer.takeRecords(),[],'A no-op refresh must not write any DOM');
+  assert.equal(JSON.parse(w.localStorage.getItem('qingzheng-presets')).length,101);
+  originals[0].querySelector('.preset-btn').click();
+  assert.equal(bar.querySelector('.preset-group.active'),originals[0]);
+  assert.equal(originals.every(node=>node.isConnected),true);
+  observer.disconnect();
+});
+test('deleting one preset leaves the remaining controls connected and functional',t => {
+  const {app,d} = boot(t);
+  for (const name of ['保留方案','删除方案']) {
+    app.settings.saveAsPreset(); d.querySelector('#presetName').value = name; app.settings.submitPreset();
+  }
+  const retained = d.querySelector('.preset-group'), removedId = app.settings.presets[1].id;
+  app.settings.deletePreset(removedId); d.querySelector('#confirmAccept').click();
+  assert.equal(d.querySelectorAll('.preset-group').length,1);
+  assert.equal(d.querySelector('.preset-group'),retained);
+  assert.equal(retained.querySelector('.preset-btn').textContent,'保留方案');
+  assert.equal(d.querySelector('.preset-label').textContent,'自定义排班');
+  retained.querySelector('.preset-btn').click();
+  assert.equal(d.querySelector('.preset-label'),null);
+  assert.equal(retained.classList.contains('active'),true);
+});
+
+const localAvatar = 'data:image/webp;base64,YWJjZA==';
+const profileRecord = (title = '我的生活日历',avatar = localAvatar) => JSON.stringify({version:1,title,avatar});
+function chooseAvatar(w,d,bytes = [137,80,78,71,13,10,26,10]) {
+  const file = new w.File([Uint8Array.from(bytes)],'photo.png',{type:'image/png'});
+  Object.defineProperty(d.querySelector('#avatarFile'),'files',{value:[file],configurable:true});
+  return file;
+}
+function mockAvatarCanvas(w,{deferred = false,width = 640,height = 480} = {}) {
+  const images = [], draws = [];
+  w.FileReader = class {
+    readAsArrayBuffer() { this.result = Uint8Array.from([137,80,78,71,13,10,26,10]).buffer; queueMicrotask(() => this.onload()); }
+    readAsDataURL() { this.result = 'data:image/png;base64,YWJjZA=='; queueMicrotask(() => this.onload()); }
+  };
+  w.Image = class {
+    constructor() { this.naturalWidth = width; this.naturalHeight = height; images.push(this); }
+    set src(value) { this.data = value; if (!deferred) queueMicrotask(() => this.onload()); }
+  };
+  w.HTMLCanvasElement.prototype.getContext = () => ({drawImage(...args) { draws.push(args); }});
+  w.HTMLCanvasElement.prototype.toDataURL = function(type,quality) {
+    assert.equal(this.width,256); assert.equal(this.height,256);
+    assert.equal(type,'image/webp'); assert.equal(quality,0.86); return localAvatar;
+  };
+  return {images,draws};
+}
+test('personalization is an isolated static draft and cancel, Escape and backdrop discard it',t => {
+  const {app,d,w} = boot(t), original = app.schedule.captureCurrentConfig();
+  const opener = d.querySelector('[data-action="openPersonalization"]');
+  for (const close of ['button','escape','backdrop']) {
+    opener.focus(); opener.click();
+    assert.equal(app.ui.activeDialog,'personalizationModal'); assert.equal(app.liveTimer,null);
+    assert.equal(d.querySelector('#personalizationModal').classList.contains('input-view'),true);
+    assert.equal(d.activeElement.id,'personalizationForm','Opening must not summon a mobile keyboard');
+    const input = d.querySelector('#personalizationTitle'); input.value = '草稿标题';
+    input.dispatchEvent(new w.Event('input',{bubbles:true}));
+    assert.equal(d.querySelector('#personalizationPreviewTitle').textContent,'草稿标题');
+    assert.equal(d.querySelector('#brandTitle').textContent,'清蒸排班');
+    if (close === 'button') d.querySelector('[data-action="closePersonalization"]').click();
+    if (close === 'escape') input.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+    if (close === 'backdrop') d.querySelector('#personalizationModal').click();
+    assert.equal(app.ui.activeDialog,null); assert.notEqual(app.liveTimer,null); assert.equal(d.activeElement,opener);
+    assert.equal(w.localStorage.length,0); assert.deepEqual(app.schedule.captureCurrentConfig(),original);
+  }
+});
+test('saving an arbitrary title uses plain text on every brand surface and survives reload',t => {
+  const {app,d,w} = boot(t), hero = d.querySelector('#pageTitle').textContent;
+  app.personalization.openPersonalization();
+  const title = '<b>小林的日历 🐟</b>';
+  d.querySelector('#personalizationTitle').value = ' '+title+' ';
+  d.querySelector('#personalizationForm').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+  for (const id of ['brandTitle','footerBrand']) assert.equal(d.querySelector('#'+id).textContent,title);
+  assert.equal(d.querySelector('#brandTitle b'),null); assert.equal(d.title,title);
+  assert.equal(d.querySelector('#pageTitle').textContent,hero);
+  assert.equal(d.querySelector('.brand').getAttribute('aria-label'),title+'首页');
+  const stored = w.localStorage.getItem('qingzheng-personalization');
+  assert.deepEqual(JSON.parse(stored),{version:1,title,avatar:null});
+  const reloaded = boot(t,{storage:{'qingzheng-personalization':stored}});
+  assert.equal(reloaded.app.personalization.title,title); assert.equal(reloaded.d.title,title);
+  reloaded.app.personalization.openPersonalization(); reloaded.app.personalization.resetTitle();
+  assert.equal(reloaded.app.personalization.title,title,'Reset is still a draft');
+  reloaded.app.personalization.savePersonalization();
+  assert.equal(reloaded.d.querySelector('#brandTitle .brand-light').textContent,'排班');
+  assert.equal(reloaded.d.title,html.match(/<title>(.*?)<\/title>/)[1]);
+});
+test('personalization validates title and IME Enter without closing or modifying saved data',t => {
+  const {app,d,w} = boot(t);
+  app.personalization.openPersonalization(); const input = d.querySelector('#personalizationTitle');
+  const composing = new w.KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true});
+  input.dispatchEvent(composing); assert.equal(composing.defaultPrevented,true);
+  for (const title of ['',' '.repeat(3),'x'.repeat(41),'bad\u0000title']) {
+    input.value = title; app.personalization.savePersonalization();
+    assert.equal(app.ui.activeDialog,'personalizationModal'); assert.equal(w.localStorage.length,0);
+    assert.equal(input.getAttribute('aria-invalid'),'true'); assert.equal(d.activeElement,input);
+  }
+});
+test('local personalization loads without writes and invalid records retain original storage',t => {
+  const valid = boot(t,{storage:{'qingzheng-personalization':profileRecord()}});
+  assert.equal(valid.d.querySelector('#brandAvatar').getAttribute('src'),localAvatar);
+  assert.equal(valid.w.localStorage.getItem('qingzheng-personalization'),profileRecord());
+  for (const value of ['{bad','[]','{"version":2,"title":"未来"}',profileRecord('', 'https://bad.test/avatar.svg')]) {
+    const {app,d,w} = boot(t,{storage:{'qingzheng-personalization':value}});
+    assert.equal(app.personalization.title,'清蒸排班'); assert.equal(app.personalization.avatar,null);
+    assert.equal(w.localStorage.getItem('qingzheng-personalization'),value);
+    assert.equal(d.querySelector('#storageNotice').hidden,false);
+  }
+});
+test('a failed personalization save preserves stored data and reports session-only application',t => {
+  const {app,d,w} = boot(t,{storage:{'qingzheng-personalization':profileRecord()}});
+  const setItem = w.Storage.prototype.setItem;
+  w.Storage.prototype.setItem = function(key,value) {
+    if (key === 'qingzheng-personalization') throw new Error('Quota');
+    return setItem.call(this,key,value);
+  };
+  app.personalization.openPersonalization(); app.personalization.resetAvatar();
+  d.querySelector('#personalizationTitle').value = '本次标题'; app.personalization.savePersonalization();
+  assert.equal(app.personalization.title,'本次标题'); assert.equal(app.personalization.avatar,null);
+  assert.equal(w.localStorage.getItem('qingzheng-personalization'),profileRecord());
+  assert.match(d.querySelector('#toast').textContent,/未能保存/);
+});
+test('avatar conversion center-crops to a bounded static image and persists only on save',async t => {
+  const {app,d,w} = boot(t), {draws} = mockAvatarCanvas(w);
+  const defaultSrc = d.querySelector('#brandAvatar').getAttribute('src');
+  app.personalization.openPersonalization(); chooseAvatar(w,d); await app.personalization.readAvatarFile();
+  assert.deepEqual(draws[0].slice(1),[80,0,480,480,0,0,256,256]);
+  assert.equal(d.querySelector('#personalizationPreviewAvatar').getAttribute('src'),localAvatar);
+  assert.equal(d.querySelector('#brandAvatar').getAttribute('src'),defaultSrc); assert.equal(w.localStorage.length,0);
+  app.personalization.savePersonalization(); assert.equal(app.personalization.avatar,localAvatar);
+  const stored = w.localStorage.getItem('qingzheng-personalization');
+  assert.equal(boot(t,{storage:{'qingzheng-personalization':stored}}).app.personalization.avatar,localAvatar);
+  app.personalization.openPersonalization(); app.personalization.resetAvatar(); app.personalization.closePersonalization();
+  assert.equal(app.personalization.avatar,localAvatar,'Cancelled reset keeps the saved avatar');
+  app.personalization.openPersonalization(); app.personalization.resetAvatar(); app.personalization.savePersonalization();
+  assert.equal(app.personalization.avatar,null); assert.equal(d.querySelector('#brandAvatar').getAttribute('src'),defaultSrc);
+});
+test('invalid avatar files, oversize input, decoding and canvas errors leave the original avatar intact',async t => {
+  for (const mode of ['signature','bytes','pixels','decode','canvas']) {
+    const {app,d,w} = boot(t,{storage:{'qingzheng-personalization':profileRecord()}});
+    app.personalization.openPersonalization();
+    if (mode === 'signature') chooseAvatar(w,d,[60,115,118,103,62]);
+    else {
+      const file = chooseAvatar(w,d);
+      if (mode === 'bytes') Object.defineProperty(file,'size',{value:10*1024*1024+1});
+      else {
+        mockAvatarCanvas(w,mode === 'pixels' ? {width:10000,height:10000} : {});
+        if (mode === 'decode') w.Image = class { set src(_) { queueMicrotask(() => this.onerror()); } };
+        if (mode === 'canvas') w.HTMLCanvasElement.prototype.getContext = () => null;
+      }
+    }
+    await app.personalization.readAvatarFile();
+    assert.equal(d.querySelector('#personalizationError').hidden,false,mode);
+    assert.equal(d.querySelector('#personalizationSave').disabled,false);
+    assert.equal(d.querySelector('#personalizationPreviewAvatar').getAttribute('src'),localAvatar);
+    assert.equal(w.localStorage.getItem('qingzheng-personalization'),profileRecord());
+  }
+});
+test('stale avatar decoding cannot overwrite a reset, a reopened draft or a newer upload',async t => {
+  for (const mode of ['reset','reopen','newer']) {
+    const {app,d,w} = boot(t), {images} = mockAvatarCanvas(w,{deferred:true});
+    app.personalization.openPersonalization(); chooseAvatar(w,d);
+    const first = app.personalization.readAvatarFile(); await new Promise(setImmediate);
+    assert.equal(d.querySelector('#personalizationSave').disabled,true);
+    app.personalization.savePersonalization(); assert.equal(app.ui.activeDialog,'personalizationModal');
+    if (mode === 'reset') app.personalization.resetAvatar();
+    if (mode === 'reopen') { app.personalization.closePersonalization(); app.personalization.openPersonalization(); }
+    let second;
+    if (mode === 'newer') { chooseAvatar(w,d); second = app.personalization.readAvatarFile(); await new Promise(setImmediate); }
+    images[0].onload(); await first;
+    assert.notEqual(d.querySelector('#personalizationPreviewAvatar').getAttribute('src'),localAvatar);
+    if (mode === 'newer') {
+      assert.equal(d.querySelector('#personalizationSave').disabled,true,'Stale completion must not clear a newer busy state');
+      images[1].onload(); await second;
+      assert.equal(d.querySelector('#personalizationPreviewAvatar').getAttribute('src'),localAvatar);
+    }
+    assert.equal(w.localStorage.length,0);
+  }
+});
+test('both export routes contain the saved title and no avatar data',async t => {
+  const {app,d,w} = boot(t,{storage:{'qingzheng-personalization':profileRecord()}});
+  app.dataTools.openDataTools(); await app.dataTools.copyBackupText();
+  const text = d.querySelector('#backupTextOutput').value;
+  assert.deepEqual(parseBackupText(text).personalization,{title:'我的生活日历'});
+  let blob; w.URL.createObjectURL = value => { blob = value; return 'blob:local'; };
+  w.HTMLAnchorElement.prototype.click = () => {}; app.dataTools.exportBackup();
+  const json = await new Promise(resolve => { const reader = new w.FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(blob); });
+  assert.deepEqual(parseBackup(json).personalization,{title:'我的生活日历'});
+  assert.doesNotMatch(json,/avatar|YWJjZA/);
+  assert.equal(w.localStorage.getItem('qingzheng-personalization'),profileRecord());
+});
+test('file and text import preview title safely, cancel without writes and preserve local avatar on confirm',async t => {
+  for (const source of ['file','text']) {
+    const {app,d,w} = boot(t,{storage:{'qingzheng-personalization':profileRecord()}});
+    const incoming = createBackup(Core.normalizeConfig({anchor:'2026-01-01',cycle:['休息'],shiftDefs:{}}),[],'now',{title:'<b>换机标题</b>'});
+    incoming.personalization.avatar = 'data:image/png;base64,SHOULDNOTIMPORT';
+    app.dataTools.openDataTools();
+    if (source === 'text') { d.querySelector('#backupTextInput').value = createBackupText(incoming); app.dataTools.previewBackupText(); }
+    else {
+      Object.defineProperty(d.querySelector('#backupFile'),'files',{value:[new w.File([JSON.stringify(incoming)],'backup.json')],configurable:true});
+      await app.dataTools.readBackupFile();
+    }
+    assert.match(d.querySelector('#importTitlePreview').textContent,/<b>换机标题<\/b>/);
+    assert.equal(d.querySelector('#importTitlePreview b'),null);
+    app.dataTools.importBackup(); d.querySelector('#confirmCancel').click();
+    assert.equal(w.localStorage.getItem('qingzheng-personalization'),profileRecord());
+    app.dataTools.importBackup(); d.querySelector('#confirmAccept').click();
+    assert.equal(app.personalization.title,'<b>换机标题</b>'); assert.equal(app.personalization.avatar,localAvatar);
+    assert.deepEqual(JSON.parse(w.localStorage.getItem('qingzheng-personalization')),{version:1,title:'<b>换机标题</b>',avatar:localAvatar});
+  }
+});
+test('failed schedule recovery also preserves the persisted personalization and reports incomplete import',t => {
+  const {app,d,w} = boot(t,{storage:{'qingzheng-personalization':profileRecord()}});
+  app.settings.commitConfig(app.schedule.captureCurrentConfig());
+  const setItem = w.Storage.prototype.setItem;
+  w.Storage.prototype.setItem = function(key,value) {
+    if (key === 'qingzheng-presets') throw new Error('Quota');
+    return setItem.call(this,key,value);
+  };
+  app.dataTools.openDataTools();
+  d.querySelector('#backupTextInput').value = createBackupText(createBackup(app.schedule.captureCurrentConfig(),[],'now',{title:'导入标题'}));
+  app.dataTools.previewBackupText(); app.dataTools.importBackup(); d.querySelector('#confirmAccept').click();
+  assert.equal(app.personalization.title,'导入标题'); assert.equal(app.personalization.avatar,localAvatar);
+  assert.equal(w.localStorage.getItem('qingzheng-personalization'),profileRecord());
+  assert.match(d.querySelector('#toast').textContent,/未能完整保存/);
 });
