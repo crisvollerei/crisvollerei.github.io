@@ -49,6 +49,7 @@ export function createPersonalization({window,ui,storage}) {
   }
   function renderPreview() {
     if (!draft) return;
+    ui.updateCharacterCounts();
     $('personalizationPreviewTitle').textContent = $('personalizationTitle').value.trim() || DEFAULT_TITLE;
     $('personalizationPreviewAvatar').src = draft.avatar || defaultAvatar;
   }

@@ -33,7 +33,11 @@ function readVersion1(data) {
     if (!normalized || typeof preset.name !== 'string' || !preset.name.trim() || preset.name.trim().length > 40) {
       throw new Error('备份中有无效的方案，未导入任何内容。');
     }
-    return {...normalized,name:preset.name.trim()};
+    const source = preset.importSourceName;
+    if (source !== undefined && (typeof source !== 'string' || !source.trim() || source.trim().length > 40)) {
+      throw new Error('备份中有无效的方案来源名称，未导入任何内容。');
+    }
+    return {...normalized,name:preset.name.trim(),...(source === undefined ? {} : {importSourceName:source.trim()})};
   });
   const title = normalizeTitle(data.personalization?.title);
   if (!title) throw new Error('备份中的自定义标题不完整或无效，未导入任何内容。');
@@ -57,6 +61,13 @@ export function parseBackup(text) {
 
 export function createBackup(config, presets, exportedAt, personalization = {title:DEFAULT_TITLE}) {
   return {app:APP,version:SCHEMA_VERSION,exportedAt,config,presets,personalization:{title:personalization.title}};
+}
+
+export function createBackupFile(backup) {
+  const compact = JSON.stringify(backup);
+  parseBackup(compact);
+  const readable = JSON.stringify(backup,null,2);
+  return readable.length <= MAX_BACKUP_BYTES && encoder.encode(readable).length <= MAX_BACKUP_BYTES ? readable : compact;
 }
 
 function checksum(bytes) {

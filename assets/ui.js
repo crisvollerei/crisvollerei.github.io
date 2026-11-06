@@ -4,8 +4,26 @@ export function createUI(window) {
   const runningAnimations = new Set(), elementAnimations = new WeakMap();
   const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const dismissHandlers = new Map(), stack = [];
-  let lifecycle = {}, toastTimer, inputViewScroll = null, pendingConfirmation = null;
+  let lifecycle = {}, toastTimer, inputViewScroll = null, pendingConfirmation = null, compositionTarget = null;
   const active = () => stack.at(-1);
+
+  function closeQuickTools(restoreFocus = false) {
+    if ($('quickToolsPanel').hidden) return;
+    $('quickToolsPanel').hidden = true; $('quickToolsToggle').setAttribute('aria-expanded','false');
+    if (restoreFocus) $('quickToolsToggle').focus({preventScroll:true});
+  }
+  $('quickToolsToggle').addEventListener('click',() => {
+    const opening = $('quickToolsPanel').hidden;
+    $('quickToolsPanel').hidden = !opening; $('quickToolsToggle').setAttribute('aria-expanded',String(opening));
+  });
+  function updateCharacterCounts() {
+    for (const counter of document.querySelectorAll('[data-count-for]')) {
+      const input = $(counter.dataset.countFor), text = `${input.value.length} / ${input.maxLength}`;
+      if (counter.textContent !== text) counter.textContent = text;
+      counter.classList.toggle('is-full',input.value.length >= input.maxLength);
+    }
+  }
+  document.addEventListener('input',updateCharacterCounts);
 
   function mk(tag, options = {}) {
     const element = document.createElement(tag);
@@ -47,6 +65,9 @@ export function createUI(window) {
   }
   function openDialog(id, { nested = false } = {}) {
     if (active()?.id === id) return;
+    closeQuickTools($('quickToolsPanel').contains(document.activeElement));
+    updateCharacterCounts();
+    compositionTarget = null;
     if (!nested) while (active()) dismissDialog(active().id);
     const overlay = $(id), content = overlay.querySelector('[role="dialog"]');
     const inputView = !!content.querySelector('input,textarea') || !!active()?.inputView;
@@ -68,6 +89,7 @@ export function createUI(window) {
   }
   function closeDialog(id) {
     if (active()?.id !== id) return;
+    compositionTarget = null;
     const entry = stack.pop(), overlay = $(id);
     overlay.hidden = true; overlay.classList.remove('input-view');
     if (active()) {
@@ -120,9 +142,20 @@ export function createUI(window) {
   for (const id of ['settingsModal','pickerModal','presetModal','confirmModal','dataModal','personalizationModal']) {
     $(id).addEventListener('click',event => { if (event.target === $(id)) dismissDialog(id); });
   }
+  document.addEventListener('compositionstart',event => { compositionTarget = event.target; });
+  const clearComposition = event => { if (compositionTarget === event.target) compositionTarget = null; };
+  document.addEventListener('compositionend',clearComposition);
+  document.addEventListener('focusout',clearComposition);
   document.addEventListener('keydown',event => {
-    if (!active()) return;
-    if (event.key === 'Escape') { event.preventDefault(); dismissDialog(active().id); }
+    if (!active()) {
+      if (event.key === 'Escape' && !$('quickToolsPanel').hidden) { event.preventDefault(); closeQuickTools(true); }
+      return;
+    }
+    if (event.key === 'Escape') {
+      // Escape first belongs to the IME while its candidate text is being composed.
+      if (compositionTarget || event.isComposing || event.keyCode === 229) return;
+      event.preventDefault(); dismissDialog(active().id);
+    }
     if (event.key !== 'Tab') return;
     const nodes = [...$(active().id).querySelectorAll('button,input,textarea,select')]
       .filter(node => !node.disabled && !node.closest('[hidden],[inert]'))
@@ -131,7 +164,7 @@ export function createUI(window) {
     if (event.shiftKey && (document.activeElement === first || isContainer)) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && (document.activeElement === last || isContainer)) { event.preventDefault(); first?.focus(); }
   });
-  return { $, mk, toast, reveal, animateElement, motionAllowed, observeAmbientMotion, openDialog, closeDialog, confirmAction,
+  return { $, mk, toast, reveal, animateElement, motionAllowed, observeAmbientMotion, openDialog, closeDialog, confirmAction, closeQuickTools, updateCharacterCounts,
     runningAnimations, get activeDialog() { return active()?.id || null; },
     setLifecycle(value) { lifecycle = value; }, onDismiss(id, handler) { dismissHandlers.set(id,handler); } };
 }

@@ -4,13 +4,22 @@ import { syncAndroidBridge } from './integrations.js?v=924ca4c1da81';
 export function createSettings({window, ui, schedule, views, storage}) {
   const { document, Date } = window;
   const { $, mk, toast, openDialog, closeDialog } = ui;
-  const { set: storageSet, readJSON } = storage;
+  const { set: storageSet } = storage;
   const { captureCurrentConfig } = schedule;
-  let PRESETS = [], activePresetId = null, draftDefs = null;
+  let PRESETS = [], activePresetId = null, draftDefs = null, presetsRaw = null, presetRevision = 0, presetSaving = false;
+  let persistedIds = new Set(), presetsReadable = true;
   const presetNodes = new Map();
   function configKey(config) {
     return JSON.stringify([config.anchor,config.cycle,Object.entries(config.shiftDefs).sort(([a],[b])=>a.localeCompare(b))
       .map(([name,def]) => [name,def.emoji,def.cssClass,def.isWork,def.startTime,def.endTime,!!def.crossDay])]);
+  }
+  function nameResolver(presets) {
+    const used = new Set(presets.map(preset => preset.name)), suffixes = new Map();
+    return name => {
+      let result = name, suffix = suffixes.get(name) || 1;
+      while (used.has(result)) { const ending = `（${suffix++}）`; result = name.slice(0,40-ending.length)+ending; }
+      suffixes.set(name,suffix); used.add(result); return result;
+    };
   }
   function commitConfig(config,options) {
     if (!Core.normalizeConfig(config)) return false;
@@ -19,19 +28,61 @@ export function createSettings({window, ui, schedule, views, storage}) {
     syncAndroidBridge(window,schedule.captureCurrentConfig(),toast);
     return persisted;
   }
-  function loadPresets() {
-    const saved = readJSON('qingzheng-presets');
+  function readPresets(raw) {
+    let saved = null;
+    try { saved = raw === null ? null : JSON.parse(raw); }
+    catch (_) { storage.markRecovered(); }
     if (saved !== null && !Array.isArray(saved)) storage.markRecovered();
     const seen = new Set();
-    PRESETS = (Array.isArray(saved) ? saved : []).flatMap(preset => {
+    return (Array.isArray(saved) ? saved : []).flatMap(preset => {
       const config = Core.normalizeConfig(preset);
       if (!config || typeof preset.id !== 'string' || typeof preset.name !== 'string' || !preset.name.trim() || seen.has(preset.id)) { storage.markRecovered(); return []; }
       seen.add(preset.id);
-      return [{...config,id:preset.id,name:preset.name,createdAt:preset.createdAt}];
+      const origin = typeof preset.importSourceName === 'string' && preset.importSourceName.trim() && preset.importSourceName.length <= 40 ? {importSourceName:preset.importSourceName} : {};
+      return [{...config,id:preset.id,name:preset.name,createdAt:preset.createdAt,...origin}];
     });
+  }
+  function loadPresets() {
+    const snapshot = storage.readSnapshot('qingzheng-presets');
+    presetsReadable = snapshot.ok; presetsRaw = snapshot.value;
+    PRESETS = readPresets(presetsRaw); persistedIds = new Set(PRESETS.map(preset => preset.id));
     syncActivePreset();
   }
-  function savePresets() { return storageSet('qingzheng-presets',JSON.stringify(PRESETS)); }
+  function refreshPresets() {
+    const snapshot = storage.readSnapshot('qingzheng-presets');
+    presetsReadable = snapshot.ok;
+    if (!snapshot.ok) return false;
+    const raw = snapshot.value;
+    if (raw === presetsRaw) return false;
+    const latest = readPresets(raw), localIds = new Set(PRESETS.map(preset => preset.id));
+    const merged = new Map(latest.map(preset => [preset.id,preset]));
+    // Keep only local unsaved changes; an old tab must not resurrect externally deleted records.
+    for (const id of persistedIds) if (!localIds.has(id)) merged.delete(id);
+    const resolveName = nameResolver([...merged.values()]);
+    const identities = new Set([...merged.values()].map(preset => JSON.stringify([preset.name,configKey(preset)])));
+    for (const preset of PRESETS) if (!persistedIds.has(preset.id) && !merged.has(preset.id)) {
+      const identity = JSON.stringify([preset.name,configKey(preset)]);
+      if (identities.has(identity)) continue;
+      merged.set(preset.id,{...preset,name:resolveName(preset.name)}); identities.add(identity);
+    }
+    presetsRaw = raw; persistedIds = new Set(latest.map(preset => preset.id));
+    PRESETS = [...merged.values()];
+    return true;
+  }
+  function syncExternalPresets() { if (refreshPresets()) syncActivePreset(); }
+  function savePresets() {
+    if (!presetsReadable) return false;
+    const raw = JSON.stringify(PRESETS), saved = storageSet('qingzheng-presets',raw);
+    if (saved) { presetsRaw = raw; persistedIds = new Set(PRESETS.map(preset => preset.id)); }
+    return saved;
+  }
+  function completeMutation(result, done = () => {}) {
+    if (result?.then) return result.then(done,() => { if (done() !== false) toast('暂时无法完成保存，请稍后重试'); });
+    done(); return result;
+  }
+  window.addEventListener('storage',event => {
+    if ((event.key === 'qingzheng-presets' || event.key === null) && !ui.activeDialog && !document.hidden) syncExternalPresets();
+  });
   function syncActivePreset() {
     const current = configKey(captureCurrentConfig());
     activePresetId = PRESETS.find(preset => configKey(preset) === current)?.id || null;
@@ -39,6 +90,7 @@ export function createSettings({window, ui, schedule, views, storage}) {
   }
   function saveAsPreset() {
     if (ui.activeDialog === 'presetModal') return;
+    syncExternalPresets(); presetRevision++;
     $('presetName').value = '';
     presetNameError('');
     openDialog('presetModal');
@@ -48,29 +100,40 @@ export function createSettings({window, ui, schedule, views, storage}) {
     $('presetName').setAttribute('aria-invalid',String(!!message));
   }
   function closePresetDialog() {
+    presetRevision++; presetSaving = false; $('presetSubmit').disabled = false;
     closeDialog('presetModal');
     $('presetName').value = ''; presetNameError('');
   }
   function submitPreset() {
-    if (ui.activeDialog !== 'presetModal') return;
+    if (ui.activeDialog !== 'presetModal' || presetSaving) return;
     const name = $('presetName').value.trim();
-    let error = '';
-    if (!name) error = '请填写方案名称。';
-    else if (name.length > 40) error = '方案名称最多 40 个字符。';
-    else if (PRESETS.some(preset => preset.name === name)) error = '已有同名方案，请换一个名字。';
-    if (error) { presetNameError(error); $('presetName').focus({preventScroll:true}); return; }
-    const preset = {...captureCurrentConfig(),id:`preset_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,name,createdAt:new Date().toISOString()};
-    PRESETS.push(preset); activePresetId = preset.id;
-    const saved = savePresets(); renderPresetBar();
-    closePresetDialog();
-    toast(saved ? '当前排班已保存为方案' : '方案仅在本次打开期间有效');
+    const token = presetRevision, config = captureCurrentConfig();
+    presetSaving = true; $('presetSubmit').disabled = true;
+    return completeMutation(storage.exclusive('presets',() => {
+      if (token !== presetRevision || ui.activeDialog !== 'presetModal') return;
+      refreshPresets();
+      const error = !name ? '请填写方案名称。' : name.length > 40 ? '方案名称最多 40 个字符。'
+        : PRESETS.some(preset => preset.name === name) ? '已有同名方案，请换一个名字。' : '';
+      if (error) { syncActivePreset(); presetNameError(error); $('presetName').focus({preventScroll:true}); return; }
+      const preset = {...config,id:`preset_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,name,createdAt:new Date().toISOString()};
+      PRESETS.push(preset); activePresetId = preset.id;
+      const saved = savePresets(); renderPresetBar();
+      closePresetDialog(); toast(saved ? '当前排班已保存为方案' : '方案仅在本次打开期间有效');
+    }),() => {
+      if (token !== presetRevision) return false;
+      presetSaving = false; $('presetSubmit').disabled = false;
+    });
   }
   $('presetForm').addEventListener('submit',event => { event.preventDefault(); submitPreset(); });
-  $('presetName').addEventListener('input',() => presetNameError(''));
+  $('presetName').addEventListener('input',() => {
+    if (presetSaving) { presetRevision++; presetSaving = false; $('presetSubmit').disabled = false; }
+    presetNameError('');
+  });
   $('presetName').addEventListener('keydown',event => {
     if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) event.preventDefault();
   });
   function applyPreset(id) {
+    syncExternalPresets();
     const preset = PRESETS.find(value => value.id === id);
     if (!preset) return;
     const saved = commitConfig(preset); closeSettings();
@@ -80,10 +143,12 @@ export function createSettings({window, ui, schedule, views, storage}) {
     const preset = PRESETS.find(value => value.id === id);
     if (!preset) return;
     ui.confirmAction(`删除方案「${preset.name}」？当前排班不会改变。`,() => {
-      PRESETS = PRESETS.filter(value => value.id !== id);
-      if (activePresetId === id) activePresetId = null;
-      const saved = savePresets(); renderPresetBar(); toast(saved ? '方案已删除，当前排班保留' : '本次已移除方案，关闭后可能恢复');
-      document.querySelector('[data-action="saveAsPreset"]').focus({preventScroll:true});
+      return completeMutation(storage.exclusive('presets',() => {
+        refreshPresets(); PRESETS = PRESETS.filter(value => value.id !== id);
+        if (activePresetId === id) activePresetId = null;
+        const saved = savePresets(); renderPresetBar(); toast(saved ? '方案已删除，当前排班保留' : '本次已移除方案，关闭后可能恢复');
+        if (!ui.activeDialog) document.querySelector('[data-action="saveAsPreset"]').focus({preventScroll:true});
+      }));
     });
   }
   function renderPresetBar() {
@@ -121,39 +186,56 @@ export function createSettings({window, ui, schedule, views, storage}) {
       previous = group;
     }
   }
-  function restoreBackup(backup) {
-    const usedNames = new Set(PRESETS.map(preset => preset.name));
-    const numberedName = (name,suffix) => {
-      const ending = `（${suffix}）`;
-      return name.slice(0,40 - ending.length) + ending;
-    };
-    const uniqueName = name => {
-      let result = name, suffix = 1;
-      while (usedNames.has(result)) result = numberedName(name,suffix++);
-      usedNames.add(result);
-      return result;
-    };
-    const addPreset = (config,name) => PRESETS.push({...Core.normalizeConfig(config),
-      id:`preset_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,name:uniqueName(name),createdAt:new Date().toISOString()});
-    // Keep the pre-import schedule reachable even when it was never saved as a preset.
-    const current = captureCurrentConfig();
-    if (!PRESETS.some(preset => configKey(preset) === configKey(current))) addPreset(current,'导入前的排班');
-    for (const preset of backup.presets) {
-      const duplicate = PRESETS.some(existing => {
-        const suffix = existing.name.match(/（([1-9]\d*)）$/)?.[1];
-        return configKey(existing) === configKey(preset) && (existing.name === preset.name || (suffix && existing.name === numberedName(preset.name,suffix)));
-      });
-      if (!duplicate) addPreset(preset,preset.name);
-    }
-    const presetsSaved = savePresets();
-    // Never overwrite the persisted schedule if its recovery preset could not be saved.
-    const configSaved = commitConfig(backup.config,{persist:presetsSaved});
-    return presetsSaved && configSaved;
+  function restoreBackup(backup,{canApply = () => true} = {}) {
+    return storage.exclusive('presets',() => {
+      if (!canApply()) return false;
+      refreshPresets();
+      const uniqueName = nameResolver(PRESETS);
+      const exact = new Map(), imported = new Map(), keys = new Set();
+      const index = (map,name,key) => { if (!map.has(name)) map.set(name,new Set()); map.get(name).add(key); };
+      for (const preset of PRESETS) {
+        const key = configKey(preset); keys.add(key); index(exact,preset.name,key);
+        if (preset.importSourceName) index(imported,preset.importSourceName,key);
+      }
+      const addPreset = (config,name,key,sourceName = null) => {
+        const resolved = uniqueName(name);
+        PRESETS.push({...Core.normalizeConfig(config),id:`preset_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,
+          name:resolved,createdAt:new Date().toISOString(),...(sourceName && resolved !== sourceName ? {importSourceName:sourceName} : {})});
+        keys.add(key); index(exact,resolved,key);
+        if (sourceName && resolved !== sourceName) index(imported,sourceName,key);
+      };
+      // Keep the pre-import schedule reachable even when it was never saved as a preset.
+      const current = captureCurrentConfig();
+      const currentKey = configKey(current);
+      if (!keys.has(currentKey)) addPreset(current,'导入前的排班',currentKey);
+      for (const preset of backup.presets) {
+        const key = configKey(preset), sourceName = preset.importSourceName || preset.name;
+        if (!exact.get(preset.name)?.has(key) && !imported.get(sourceName)?.has(key)) addPreset(preset,preset.name,key,sourceName);
+      }
+      const presetsSaved = savePresets();
+      // Never overwrite the persisted schedule if its recovery preset could not be saved.
+      const configSaved = commitConfig(backup.config,{persist:presetsSaved});
+      return presetsSaved && configSaved;
+    });
   }
 
   // Settings are a separate draft. Add/remove/re-render never mutate the live schedule.
   function settingsStatus(message = '') { $('settingsStatus').textContent = message; $('settingsStatus').hidden = !message; }
-  function settingsError(message) { settingsStatus(); $('settingsError').textContent = message; $('settingsError').hidden = !message; }
+  function settingsError(message,field = null) {
+    settingsStatus(); $('settingsError').textContent = message; $('settingsError').hidden = !message;
+    for (const input of $('settingsModal').querySelectorAll('[aria-invalid="true"]')) {
+      input.removeAttribute('aria-invalid');
+      input.setAttribute('aria-describedby',(input.getAttribute('aria-describedby') || '').split(' ').filter(id => id && id !== 'settingsFieldError').join(' '));
+    }
+    $('settingsFieldError')?.remove();
+    if (message && field) {
+      const note = mk('small',{cls:'field-error',text:message}); note.id = 'settingsFieldError';
+      (field.closest('.form-group,.shift-def-row') || field.parentElement).append(note);
+      field.setAttribute('aria-invalid','true');
+      field.setAttribute('aria-describedby',`${field.getAttribute('aria-describedby') || ''} settingsFieldError`.trim());
+      field.focus();
+    }
+  }
   function openSettings() {
     if (ui.activeDialog === 'settingsModal') return;
     draftDefs = Core.normalizeDefs(schedule.shiftDefs);
@@ -189,6 +271,7 @@ export function createSettings({window, ui, schedule, views, storage}) {
   function labeledInput(label, type, name, field, value) {
     const wrapper = mk('label',{text:label}), input = mk('input');
     input.type = type; input.dataset.field = field; input.setAttribute('aria-label',`${name} ${label}`);
+    input.setAttribute('aria-describedby','settingsError');
     if (type === 'checkbox') input.checked = !!value; else input.value = value || '';
     wrapper.append(input); return [wrapper,input];
   }
@@ -264,12 +347,13 @@ export function createSettings({window, ui, schedule, views, storage}) {
   $('anchorDate').addEventListener('input',renderCyclePreview);
   $('shiftDefsEditor').addEventListener('input',renderCyclePreview);
   $('shiftDefsEditor').addEventListener('change',renderCyclePreview);
+  $('settingsModal').addEventListener('input',() => { if (!$('settingsError').hidden) settingsError(''); });
   function addShiftDef() {
     if (!draftDefs) return;
     const input = $('shiftName'), name = input.value.trim();
-    if (!Core.validName(name)) { settingsError('班次名称不能包含空格，且长度应为 1–40 个字符。'); input.focus({preventScroll:true}); return; }
+    if (!Core.validName(name)) { settingsError('班次名称不能包含空格，且长度应为 1–40 个字符。',input); return; }
     draftDefs = readDraftRows();
-    if (Core.own(draftDefs,name)) { settingsError('这个班次已存在。'); input.focus({preventScroll:true}); return; }
+    if (Core.own(draftDefs,name)) { settingsError('这个班次已存在。',input); return; }
     draftDefs[name] = Core.defaultDef(name); settingsError(''); renderShiftDefsEditor();
     input.value = ''; input.focus({preventScroll:true});
   }
@@ -290,10 +374,13 @@ export function createSettings({window, ui, schedule, views, storage}) {
   function saveSettings() {
     if (!draftDefs) return;
     const anchor = $('anchorDate').value, cycle = $('cyclePattern').value.trim().split(/\s+/).filter(Boolean);
-    if (!Core.parseDate(anchor)) { settingsError('请选择有效的周期起始日期（1900–2100 年）。'); return; }
-    if (!Core.validCycle(cycle)) { settingsError('周期不能为空；最多 3660 天，每个班次名称最多 40 个字符且不含空格。'); return; }
+    if (!Core.parseDate(anchor)) { settingsError('请选择有效的周期起始日期（1900–2100 年）。',$('anchorDate')); return; }
+    if (!Core.validCycle(cycle)) { settingsError('周期不能为空；最多 3660 天，每个班次名称最多 40 个字符且不含空格。',$('cyclePattern')); return; }
     const defs = readDraftRows();
-    for (const [name,def] of Object.entries(defs)) if (def.isWork && (!Core.validTime(def.startTime) || !Core.validTime(def.endTime))) { settingsError(`请填写「${name}」的完整上下班时间。`); return; }
+    for (const [name,def] of Object.entries(defs)) if (def.isWork && (!Core.validTime(def.startTime) || !Core.validTime(def.endTime))) {
+      const row = [...$('shiftDefsEditor').children].find(item => item.dataset.shift === name);
+      settingsError(`请填写「${name}」的完整上下班时间。`,row.querySelector(Core.validTime(def.startTime) ? '[data-field="endTime"]' : '[data-field="startTime"]')); return;
+    }
     const missing = [];
     for (const name of cycle) if (!Core.own(defs,name)) { defs[name] = Core.own(DEFAULT_SHIFT_DEFS,name) ? DEFAULT_SHIFT_DEFS[name] : Core.defaultDef(name); missing.push(name); }
     if (missing.length) {
@@ -302,5 +389,5 @@ export function createSettings({window, ui, schedule, views, storage}) {
     const persisted = commitConfig({anchor,cycle,shiftDefs:defs}); closeSettings();
     toast(persisted ? '排班设置已保存' : '排班已更新，但浏览器暂时无法保存');
   }
-  return { configKey, commitConfig, loadPresets, savePresets, syncActivePreset, saveAsPreset, presetNameError, closePresetDialog, submitPreset, applyPreset, deletePreset, renderPresetBar, restoreBackup, settingsError, openSettings, closeSettings, restoreDefaultSettings, readDraftRows, labeledInput, renderShiftDefsEditor, renderCyclePreview, appendCycleShift, removeLastCycleShift, addShiftDef, removeShiftDef, saveSettings, get presets() { return PRESETS; }, get draftDefs() { return draftDefs; } };
+  return { configKey, commitConfig, loadPresets, savePresets, syncExternalPresets, syncActivePreset, saveAsPreset, presetNameError, closePresetDialog, submitPreset, applyPreset, deletePreset, renderPresetBar, restoreBackup, settingsError, openSettings, closeSettings, restoreDefaultSettings, readDraftRows, labeledInput, renderShiftDefsEditor, renderCyclePreview, appendCycleShift, removeLastCycleShift, addShiftDef, removeShiftDef, saveSettings, get presets() { return PRESETS; }, get draftDefs() { return draftDefs; } };
 }

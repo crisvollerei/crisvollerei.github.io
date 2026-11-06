@@ -7,7 +7,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   const { getSolarTerm, getHoliday, festivalParts, makeFestivalArt, renderFestivalNotice } = festivals;
   const now = new Date();
   let viewYear = now.getFullYear(), viewMonth = now.getMonth(), selectedDate = null, pickerYear, lastRenderedMonth = null;
-  let detailTrigger = null, detailReturnDate = null, detailReturnSource = null;
+  let detailTrigger = null, detailReturnDate = null, detailReturnSource = null, lastNextShiftsKey = '';
   function renderStats() {
     const stats = calculateMonthlyStats(viewYear, viewMonth);
     const previous = calculateMonthlyStats(viewYear, viewMonth - 1);
@@ -132,11 +132,16 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     }
     $('heatmapGrid').replaceChildren(...months);
   }
-  function renderNextShifts() {
-    const upcoming = calculateNextShifts();
+  function renderNextShifts(now = new Date()) {
+    const todayTimes = schedule.getShiftTimes(now);
+    const key = JSON.stringify([formatDateISO(now),schedule.revision,!!(todayTimes && now >= todayTimes.start)]);
+    if (key === lastNextShiftsKey) return;
+    lastNextShiftsKey = key;
+    const upcoming = calculateNextShifts(now);
     $('nextShiftContainer').replaceChildren(...getWorkShifts().map(name => {
       const row = mk('div',{cls:'next-shift-item'});
-      row.append(mk('span',{text:`下次${name}`}),mk('span',{text:`${upcoming[name]} 天后`})); return row;
+      const when = upcoming[name] === 0 ? `今天 ${getShiftDef(name).startTime}` : `${upcoming[name]} 天后`;
+      row.append(mk('span',{text:`下次${name}`}),mk('span',{text:when})); return row;
     }));
     $('nextShiftContainer').hidden = getWorkShifts().length === 0;
   }
@@ -173,6 +178,12 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   function render() {
     const today = new Date();
     viewYear = Math.min(maxYear(),Math.max(minYear(),viewYear));
+    if (selectedDate && !isNavigableDate(selectedDate)) {
+      selectedDate = selectedDate.getFullYear() < minYear() ? new Date(minYear(),0,1) : new Date(maxYear(),11,31);
+      viewYear = selectedDate.getFullYear(); viewMonth = selectedDate.getMonth();
+      detailTrigger = null; detailReturnDate = formatDateISO(selectedDate); detailReturnSource = 'calendar';
+      $('detailAnnouncement').textContent = `${formatDate(selectedDate)} ${getWeekdayCn(selectedDate)}，${getShift(selectedDate)}，${shiftTimeText(getShift(selectedDate))}`;
+    }
     $('subtitle').textContent = `${formatDate(today)} · ${getWeekdayCn(today)}`;
     $('footerHint').textContent = `配置仅保存在当前设备 · ${schedule.cycle.length} 天一循环`;
     renderStats(); renderLegend(); renderCalendar(); renderHeatmap(); renderNextShifts(); renderUpcoming(); onUpdateLive();
@@ -181,6 +192,9 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   function renderDetail(date) {
     const name = getShift(date), def = getShiftDef(name), lunar = getLunarDate(date);
     const festival = getHoliday(date), term = getSolarTerm(date);
+    const distance = Core.dayNumber(date)-Core.dayNumber(new Date());
+    $('detailRelative').textContent = distance === 0 ? '今天的安排' : distance === 1 ? '明天的安排' : distance === -1 ? '昨天的安排'
+      : distance > 0 ? `${distance} 天后的安排` : `${-distance} 天前的安排`;
     renderFestivalNotice($('detailFestival'),festival);
     $('detailHeading').textContent = `${date.getMonth()+1}月${date.getDate()}日 · ${getWeekdayCn(date)}`;
     $('detailDate').textContent = `${formatDate(date)} ${getWeekdayCn(date)}${lunar.day ? ` · 农历${lunar.yearGanZhi}年 [${lunar.zodiac}] ${lunar.monthStr}${lunar.dayStr}` : ''}${festival ? ` · ${festival}` : ''}${term && term !== festival ? ` · ${term}` : ''}`;
@@ -195,8 +209,13 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       ['距休息日',rest < 0 ? '周期内无休息日' : rest === 0 ? (isSameDay(date,new Date()) ? '就是今天' : '当天休息') : `${rest} 天`],
       ['周期位置',`${getCycleIndex(date) + 1} / ${schedule.cycle.length}`]
     ].map(([label,value]) => { const item = mk('div',{cls:'detail-extra-item'}); item.append(mk('p',{cls:'detail-extra-label',text:label}),mk('p',{cls:'detail-extra-value',text:value})); return item; }));
-    $('detailPrev').disabled = addDays(date,-1).getFullYear() < minYear();
-    $('detailNext').disabled = addDays(date,1).getFullYear() > maxYear();
+    for (const [id,offset,boundary] of [['detailPrev',-1,'已到最早日期'],['detailNext',1,'已到最晚日期']]) {
+      const target = addDays(date,offset), enabled = isNavigableDate(target);
+      $(id).disabled = !enabled;
+      $(id+'Preview').textContent = enabled ? `${target.getMonth()+1}/${target.getDate()} · ${getShift(target)}` : boundary;
+      $(id).setAttribute('aria-label',enabled ? `查看${formatDate(target)}，${getWeekdayCn(target)}，${getShift(target)}` : boundary);
+      $(id).title = enabled ? `${formatDate(target)} ${getWeekdayCn(target)} · ${getShift(target)} · ${shiftTimeText(getShift(target))}` : boundary;
+    }
   }
   function showDetail(date,trigger = null) {
     if (trigger) {
@@ -214,7 +233,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   function moveDetail(amount) {
     if (!selectedDate) return;
     const date = addDays(selectedDate,amount);
-    if (date.getFullYear() < minYear() || date.getFullYear() > maxYear()) return;
+    if (!isNavigableDate(date)) return;
     selectedDate = date;
     if (date.getFullYear() !== viewYear || date.getMonth() !== viewMonth) {
       viewYear = date.getFullYear(); viewMonth = date.getMonth(); render();
@@ -261,6 +280,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   // A single navigation boundary applies to buttons, keyboard shortcuts and the picker.
   function minYear() { return Math.max(1900,new Date().getFullYear() - 1); }
   function maxYear() { return Math.min(2100,new Date().getFullYear() + 1); }
+  function isNavigableDate(date) { return date.getFullYear() >= minYear() && date.getFullYear() <= maxYear(); }
   function navigateMonth(year, month) {
     const target = new Date(year,month,1);
     if (target.getFullYear() < minYear() || target.getFullYear() > maxYear()) return;

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import Core from '../assets/schedule-core.js';
-import { MAX_BACKUP_BYTES, MAX_BACKUP_TEXT_LENGTH, createBackup, parseBackup, createBackupText, parseBackupText } from '../assets/backup-format.js';
+import { MAX_BACKUP_BYTES, MAX_BACKUP_TEXT_LENGTH, createBackup, createBackupFile, parseBackup, createBackupText, parseBackupText } from '../assets/backup-format.js';
 
 const config = () => Core.normalizeConfig({anchor:'2026-10-19',cycle:['白班','夜班','休息'],shiftDefs:{
   '白班':{isWork:true,startTime:'08:00',endTime:'20:00',cssClass:'day'},
@@ -60,6 +60,47 @@ test('backup refuses oversized input and supports an empty collection of saved p
   assert.deepEqual(parseBackup(JSON.stringify(value)).presets,[]);
 });
 
+test('file export keeps readable JSON when it fits and validates the same data contract',() => {
+  const data = backup(), file = createBackupFile(data);
+  assert.equal(file,JSON.stringify(data,null,2));
+  assert.deepEqual(parseBackup(file),parseBackup(JSON.stringify(data)));
+  assert.throws(() => createBackupFile({...data,version:2}),/数据版本/);
+  assert.throws(() => createBackupFile({...data,personalization:{title:''}}),/标题/);
+});
+test('file export falls back to compact JSON for valid long-cycle collections whose indentation exceeds the limit',() => {
+  const longCycle = Core.normalizeConfig({anchor:'2026-11-06',cycle:Array(3660).fill('休息'),shiftDefs:{}});
+  const data = createBackup(longCycle,Array.from({length:40},(_,index) => ({...longCycle,name:`方案${index}`})),'now');
+  const compact = JSON.stringify(data), readable = JSON.stringify(data,null,2);
+  assert.ok(Buffer.byteLength(compact) < MAX_BACKUP_BYTES);
+  assert.ok(Buffer.byteLength(readable) > MAX_BACKUP_BYTES);
+  const file = createBackupFile(data);
+  assert.equal(file,compact);
+  assert.deepEqual(parseBackup(file),parseBackup(compact));
+});
+test('readable file output accepts the exact UTF-8 byte limit and falls back one byte above it',() => {
+  const data = backup(); data.padding = '';
+  const remaining = MAX_BACKUP_BYTES-Buffer.byteLength(JSON.stringify(data,null,2));
+  data.padding = '汉'.repeat(Math.floor(remaining/3))+'x'.repeat(remaining%3);
+  const readable = JSON.stringify(data,null,2);
+  assert.equal(Buffer.byteLength(readable),MAX_BACKUP_BYTES);
+  assert.equal(createBackupFile(data),readable);
+  assert.deepEqual(parseBackup(readable),parseBackup(JSON.stringify(data)));
+  data.padding += 'x';
+  assert.equal(Buffer.byteLength(JSON.stringify(data,null,2)),MAX_BACKUP_BYTES+1);
+  assert.equal(createBackupFile(data),JSON.stringify(data));
+});
+test('compact file output accepts the exact UTF-8 byte limit and rejects genuinely oversized data',() => {
+  const data = backup(); data.padding = '';
+  const remaining = MAX_BACKUP_BYTES-Buffer.byteLength(JSON.stringify(data));
+  data.padding = '汉'.repeat(Math.floor(remaining/3))+'x'.repeat(remaining%3);
+  const compact = JSON.stringify(data);
+  assert.equal(Buffer.byteLength(compact),MAX_BACKUP_BYTES);
+  assert.equal(createBackupFile(data),compact);
+  assert.deepEqual(parseBackup(createBackupFile(data)),parseBackup(compact));
+  data.padding += 'x';
+  assert.throws(() => createBackupFile(data),/2 MB/);
+});
+
 test('text transport round trips Chinese, emoji, multiline names and every shift field',() => {
   const data = backup(); data.presets[0].name = '换班 🐉\n周末';
   data.config.shiftDefs['夜班'].emoji = '🌙';
@@ -91,6 +132,16 @@ test('both backup formats include the title and explicitly exclude the local ava
   }
   data.personalization.avatar = 'UNTRUSTED_AVATAR';
   assert.deepEqual(parseBackup(JSON.stringify(data)).personalization,{title:'小林的生活日历 🐟'});
+});
+test('optional import origins survive both backup formats and invalid origins reject the whole backup',() => {
+  const data = backup(); data.presets[0].name = '日常（1）'; data.presets[0].importSourceName = '日常';
+  for (const parsed of [parseBackup(JSON.stringify(data)),parseBackupText(createBackupText(data))]) {
+    assert.equal(parsed.presets[0].name,'日常（1）'); assert.equal(parsed.presets[0].importSourceName,'日常');
+  }
+  for (const invalid of ['',null,{},'x'.repeat(41)]) {
+    data.presets[0].importSourceName = invalid;
+    assert.throws(() => parseBackup(JSON.stringify(data)),/来源名称/);
+  }
 });
 test('text transport CRC-32 matches the standard check vector',() => {
   // UTF-8 "123456789": CRC-32/ISO-HDLC is cbf43926. Transport succeeds, schema rejects the number.

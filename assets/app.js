@@ -1,12 +1,12 @@
-import { createStorage } from './storage.js?v=12c75b2d9435';
-import { createUI } from './ui.js?v=4df59f3744d9';
-import { createSchedule } from './schedule.js?v=aab834ceb702';
+import { createStorage } from './storage.js?v=f697050b13da';
+import { createUI } from './ui.js?v=4fde5d3b8ae1';
+import { createSchedule } from './schedule.js?v=b1445c1342f7';
 import { createFestivals } from './festivals.js?v=4d4197fe0e0a';
-import { createViews } from './views.js?v=0e7debd28de1';
+import { createViews } from './views.js?v=7703a6e887a8';
 import { createCompanion } from './companion.js?v=55425bc50cdc';
-import { createSettings } from './settings.js?v=2b4ec1549f42';
-import { createDataTools } from './data-tools.js?v=d1fd52e5a6f6';
-import { createPersonalization } from './personalization.js?v=31f9a0dac8f4';
+import { createSettings } from './settings.js?v=12d8e95f1f10';
+import { createDataTools } from './data-tools.js?v=d9f3b10aafe0';
+import { createPersonalization } from './personalization.js?v=94ecdda1e9f6';
 export function createApp(window) {
   const { document, Date } = window;
   const storage = createStorage(window);
@@ -74,6 +74,7 @@ export function createApp(window) {
     $('liveClock').dateTime = now.toISOString();
     const info = getEffectiveShiftInfo(now);
     const next = getNextWorkDelay(now);
+    views.renderNextShifts(now);
     setText('countdownToWork',info.start && now >= info.start && now < info.end ? '正在上班' : next === null ? '暂无工作班' : formatCountdown(next));
     setText('countdownToOff',!info.start ? '今日休息' : now < info.end ? formatCountdown(info.end - now) : '已下班');
     updateTodayCardDisplay(info, now);
@@ -143,7 +144,7 @@ export function createApp(window) {
     });
     resumeLiveUpdates();
   }
-  ui.setLifecycle({pause() { window.clearInterval(liveTimer); liveTimer = null; }, resume() { updateLiveClockAndCountdown(); resumeLiveUpdates(); }});
+  ui.setLifecycle({pause() { window.clearInterval(liveTimer); liveTimer = null; }, resume() { settings.syncExternalPresets(); updateLiveClockAndCountdown(); resumeLiveUpdates(); }});
   ui.onDismiss('settingsModal',settings.closeSettings);
   ui.onDismiss('presetModal',settings.closePresetDialog);
   const actions = {
@@ -165,6 +166,9 @@ export function createApp(window) {
   };
   for (const button of document.querySelectorAll('[data-action]')) {
     button.addEventListener('click',() => actions[button.dataset.action]?.());
+  }
+  for (const button of document.querySelectorAll('[data-quick-action]')) {
+    button.addEventListener('click',() => { ui.closeQuickTools(true); actions[button.dataset.quickAction]?.(); });
   }
   init();
   return { setTheme, enableAutomaticTheme, toggleAutomaticTheme, updateLiveClockAndCountdown, schedule, views, settings, dataTools, personalization, ui, festivals, companion, get liveTimer() { return liveTimer; }, get lastDayKey() { return lastDayKey; } };

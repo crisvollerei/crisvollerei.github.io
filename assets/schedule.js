@@ -79,9 +79,9 @@ export function createSchedule(storage, Date = globalThis.Date) {
   function calculateNextShifts(now = new Date()) {
     const result = Object.create(null);
     for (const name of getWorkShifts()) result[name] = -1;
-    for (let i = 1; i <= CYCLE.length; i++) {
-      const shift = getShift(addDays(now, i));
-      if (Core.own(result, shift) && result[shift] === -1) result[shift] = i;
+    for (let i = 0; i <= CYCLE.length; i++) {
+      const date = addDays(now, i), shift = getShift(date), times = getShiftTimes(date);
+      if (Core.own(result, shift) && result[shift] === -1 && times.start > now) result[shift] = i;
     }
     return result;
   }

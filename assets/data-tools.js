@@ -1,8 +1,8 @@
-import { MAX_BACKUP_BYTES, createBackup, parseBackup, createBackupText, parseBackupText } from './backup-format.js?v=e7cb2360b4d4';
+import { MAX_BACKUP_BYTES, createBackup, createBackupFile, parseBackup, createBackupText, parseBackupText } from './backup-format.js?v=963d75c9f851';
 export function createDataTools({window,ui,schedule,settings,personalization}) {
   const { document, Date } = window;
   const { $, toast } = ui;
-  let pending = null, readRevision = 0, copyRevision = 0;
+  let pending = null, readRevision = 0, copyRevision = 0, importing = false;
   function showError(message = '') {
     $('backupError').textContent = message;
     $('backupError').hidden = !message;
@@ -10,6 +10,7 @@ export function createDataTools({window,ui,schedule,settings,personalization}) {
   }
   function openDataTools() {
     if (ui.activeDialog === 'dataModal') return;
+    settings.syncExternalPresets();
     pending = null; readRevision++; copyRevision++;
     $('backupFile').value = '';
     $('backupTextInput').value = '';
@@ -23,16 +24,18 @@ export function createDataTools({window,ui,schedule,settings,personalization}) {
   }
   function closeDataTools() {
     readRevision++; copyRevision++; pending = null;
+    importing = false; $('importBackup').disabled = false;
     $('backupTextInput').value = ''; $('backupTextOutput').value = '';
     $('backupTextExport').hidden = true; $('importPreview').hidden = true;
     ui.closeDialog('dataModal');
   }
   function captureBackup() {
+    settings.syncExternalPresets();
     return createBackup(schedule.captureCurrentConfig(),settings.presets,new Date().toISOString(),personalization.captureBackup());
   }
   function exportBackup() {
     let text;
-    try { text = JSON.stringify(captureBackup(),null,2); parseBackup(text); }
+    try { text = createBackupFile(captureBackup()); }
     catch (error) { showError(error.message); return; }
     try {
       const blob = new window.Blob([text],{type:'application/json;charset=utf-8'});
@@ -77,6 +80,7 @@ export function createDataTools({window,ui,schedule,settings,personalization}) {
   }
   function invalidateImport() {
     readRevision++; pending = null;
+    importing = false; $('importBackup').disabled = false;
     $('importPreview').hidden = true; showError();
     $('backupStatus').textContent = '';
   }
@@ -124,16 +128,29 @@ export function createDataTools({window,ui,schedule,settings,personalization}) {
     return true;
   }
   function importBackup() {
-    if (!pending || ui.activeDialog !== 'dataModal') return;
+    if (!pending || ui.activeDialog !== 'dataModal' || importing) return;
     const entry = pending;
     if (!currentImport(entry)) return;
     ui.confirmAction('应用这份备份中的排班和标题？已有方案不会删除，当前排班会保留为方案；头像保持不变。',() => {
       if (!currentImport(entry)) return;
-      const scheduleSaved = settings.restoreBackup(entry.backup);
-      const titleSaved = personalization.restoreTitle(entry.backup.personalization.title,{persist:scheduleSaved});
-      const saved = scheduleSaved && titleSaved;
-      closeDataTools();
-      toast(saved ? '备份已导入，原有排班与方案均已保留' : '已在本次打开中导入，但浏览器未能完整保存，请复制或下载备份另存');
+      importing = true; $('importBackup').disabled = true; $('backupStatus').textContent = '正在恢复备份…';
+      const finish = scheduleSaved => {
+        if (!currentImport(entry)) return;
+        const titleSaved = personalization.restoreTitle(entry.backup.personalization.title,{persist:scheduleSaved});
+        const saved = scheduleSaved && titleSaved;
+        closeDataTools();
+        toast(saved ? '备份已导入，原有排班与方案均已保留' : '已在本次打开中导入，但浏览器未能完整保存，请复制或下载备份另存');
+      };
+      const fail = () => {
+        if (!currentImport(entry)) return;
+        importing = false; $('importBackup').disabled = false;
+        $('backupStatus').textContent = ''; showError('暂时无法恢复备份，请稍后重试。');
+      };
+      try {
+        const result = settings.restoreBackup(entry.backup,{canApply:() => currentImport(entry)});
+        if (result?.then) return result.then(finish,fail);
+        finish(result);
+      } catch (_) { fail(); }
     },{title:'确认恢复排班',accept:'导入并应用',cancel:'暂不导入'});
   }
   $('backupFile').addEventListener('change',readBackupFile);
