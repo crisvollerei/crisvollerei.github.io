@@ -18,19 +18,19 @@
   --noon-color: #886225;
   --morning-color: #246f6b;
   --evening-color: #955072;
-  --cell-day-bg: #f3f7fa;
-  --cell-night-bg: #f6f3fa;
-  --cell-rest-bg: #f0f6ef;
-  --cell-noon-bg: #faf7ee;
-  --cell-morning-bg: #eff7f5;
-  --cell-evening-bg: #fbf3f6;
+  --cell-day-bg: #dceef7;
+  --cell-night-bg: #efe6f8;
+  --cell-rest-bg: #dcf3e6;
+  --cell-noon-bg: #f8eed0;
+  --cell-morning-bg: #d9f3ef;
+  --cell-evening-bg: #f8e4ed;
   --ribbon-bg: #f0ecf7;
   --ribbon-line: #dfd7ed;
   --ring-track: #e3dcec;
   --shadow: 0 6px 24px #74628f06;
   --radius: 18px;
   --ease-out: cubic-bezier(.16,1,.3,1);
-  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", system-ui, sans-serif;
 }
 
 [data-theme="dark"] {
@@ -52,12 +52,12 @@
   --noon-color: #d7b97a;
   --morning-color: #81c8c1;
   --evening-color: #daa0bd;
-  --cell-day-bg: #24364c;
-  --cell-night-bg: #30314f;
-  --cell-rest-bg: #263b3b;
-  --cell-noon-bg: #3d3b39;
-  --cell-morning-bg: #243c46;
-  --cell-evening-bg: #3b3048;
+  --cell-day-bg: #1a3c58;
+  --cell-night-bg: #352a52;
+  --cell-rest-bg: #1a4338;
+  --cell-noon-bg: #46391c;
+  --cell-morning-bg: #164248;
+  --cell-evening-bg: #4a283c;
   --ribbon-bg: #23314c;
   --ribbon-line: #3d4d6a;
   --ring-track: #344566;

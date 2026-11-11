@@ -7,7 +7,7 @@
   --theme-gold: #b7a784;
   --hero-bg: #f9f8fd; --hero-scene: url('silver-atrium.svg?v=dd2676f86485'); --hero-line: #c7bfd9;
   --frame-texture: url('silver-pearl-trim.svg?v=2ea400839317'); --surface-texture: url('silver-scales.svg?v=5e652481c215');
-  --shadow: 0 10px 30px #666b8b09, 0 1px 3px #666b8b08;
+  --shadow: 0 14px 36px #5c648016, 0 1px 2px #5c648010;
 }
 [data-theme="dark"] {
   --bg: #101b2d; --bg-card: #1b2b44; --bg-cell: #20334d; --border: #3b4c63;
@@ -17,8 +17,8 @@
   --theme-gold: #ccb58c;
   --hero-bg: #192941; --hero-scene: url('tidal-observatory.svg?v=5e33ad09b6bd'); --hero-line: #71819a;
   --frame-texture: url('night-lace.svg?v=05a442312da3'); --surface-texture: url('night-embroidery.svg?v=7f08b19e0e60');
-  --shadow: 0 10px 30px #060e1a20, 0 1px 3px #060e1a18;
-  --cell-day-bg: #243b52; --cell-night-bg: #303952; --cell-rest-bg: #263f43;
+  --shadow: 0 16px 36px #060e1a38, 0 1px 2px #060e1a24;
+  --cell-day-bg: #1a3c58; --cell-night-bg: #352a52; --cell-rest-bg: #1a4338;
 }
 .theme-symbols { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
 .ornament-day, .ornament-night { width: 100%; height: 100%; overflow: visible; pointer-events: none; }
