@@ -1816,3 +1816,17 @@ test('failed schedule recovery also preserves the persisted personalization and 
   assert.equal(w.localStorage.getItem('qingzheng-personalization'),profileRecord());
   assert.match(d.querySelector('#toast').textContent,/未能完整保存/);
 });
+test('avatar conversion falls back to JPEG when WebP falls back to an oversized PNG',async t => {
+  const {app,d,w} = boot(t);
+  mockAvatarCanvas(w);
+  const calls = [], jpeg = 'data:image/jpeg;base64,YWJjZA==';
+  w.HTMLCanvasElement.prototype.toDataURL = function(type,quality) {
+    calls.push([type,quality]);
+    return type === 'image/webp' ? 'data:image/png;base64,' + 'A'.repeat(400 * 1024) : jpeg;
+  };
+  app.personalization.openPersonalization(); chooseAvatar(w,d);
+  await app.personalization.readAvatarFile();
+  assert.deepEqual(calls,[['image/webp',0.86],['image/jpeg',0.86]]);
+  assert.equal(d.querySelector('#personalizationPreviewAvatar').getAttribute('src'),jpeg);
+  assert.equal(d.querySelector('#personalizationError').hidden,true);
+});

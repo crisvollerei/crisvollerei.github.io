@@ -19,8 +19,7 @@
   .orbit-marker { animation: track-travel var(--orbit-duration) linear infinite var(--orbit-direction,normal) paused; animation-delay: calc(var(--orbit-phase) - var(--orbit-duration) * var(--marker-gap,0)); }
   /* Rotate the centered glyph, not the traveler that keeps it on the track. */
   .marker-diamond .orbit-glyph { animation: facet-spin var(--spin-duration,32s) linear var(--spin-phase,-7s) infinite var(--spin-direction,normal) paused; }
-  .folio-mote { animation: mote-orbit 38s linear infinite paused; }
-  .folio-mote { animation-duration: 44s; animation-delay: -11s; }
+  .folio-mote { animation: mote-orbit 44s linear -11s infinite paused; }
   .folio-mote:last-child { animation-duration: 61s; animation-delay: -37s; animation-direction: reverse; }
   .art-halo { animation: starlight 7s ease-in-out infinite paused; }
   .ambient-visible .orbit-marker, .ambient-visible .folio-mote,

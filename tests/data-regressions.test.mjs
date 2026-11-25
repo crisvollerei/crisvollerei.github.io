@@ -173,3 +173,31 @@ test('file download falls back to compact JSON and remains importable for long-c
   const json = await new Promise(resolve => { const reader = new x.w.FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(blob); });
   assert.equal(parseBackup(json).presets.length,40); assert.equal(x.d.querySelector('#backupError').hidden,true);
 });
+test('background tabs ignore hidden storage events and sync presets when returning to foreground',t => {
+  const shared = new Map(), a = boot(t,{shared}), b = boot(t,{shared});
+  let hidden = true;
+  Object.defineProperty(b.d,'hidden',{get:() => hidden,configurable:true});
+  save(a,'后台新增');
+  b.w.dispatchEvent(new b.w.StorageEvent('storage',{key:'qingzheng-presets'}));
+  assert.deepEqual([...b.d.querySelectorAll('.preset-btn')].map(button => button.textContent),[]);
+  hidden = false;
+  b.app.settings.openSettings();
+  b.d.dispatchEvent(new b.w.Event('visibilitychange'));
+  assert.deepEqual([...b.d.querySelectorAll('.preset-btn')].map(button => button.textContent),[]);
+  b.app.settings.closeSettings();
+  b.d.dispatchEvent(new b.w.Event('visibilitychange'));
+  assert.deepEqual([...b.d.querySelectorAll('.preset-btn')].map(button => button.textContent),['后台新增']);
+});
+test('preset name deduplication keeps 40-unit emoji names well-formed',t => {
+  const x = boot(t), emojiName = '🐟'.repeat(20);
+  x.app.settings.commitConfig(restConfig());
+  save(x,emojiName);
+  const incoming = createBackup({...restConfig(),anchor:'2026-11-07'},[{...restConfig(),anchor:'2026-11-07',name:emojiName}],'now');
+  x.app.settings.restoreBackup(parseBackup(JSON.stringify(incoming)));
+  const saved = names(x);
+  assert.equal(saved.length,2);
+  for (const name of saved) {
+    assert.ok(name.length <= 40);
+    assert.equal(name.isWellFormed(),true);
+  }
+});

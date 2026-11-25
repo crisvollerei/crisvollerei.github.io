@@ -9,6 +9,8 @@ const html = fs.readFileSync(path.join(root,'index.html'),'utf8');
 test('Vercel serves the existing static root after the shared build without changing other hosts',() => {
   const config = JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8'));
   const cloudflare = JSON.parse(fs.readFileSync(path.join(root,'wrangler.jsonc'),'utf8'));
+  const headers = fs.readFileSync(path.join(root,'_headers'),'utf8');
+  const vercelIgnore = fs.readFileSync(path.join(root,'.vercelignore'),'utf8');
   assert.equal(config.framework,null);
   assert.equal(config.buildCommand,'npm run build');
   assert.equal(config.outputDirectory,'.');
@@ -16,6 +18,26 @@ test('Vercel serves the existing static root after the shared build without chan
   assert.ok(fs.existsSync(path.join(root,config.outputDirectory,'index.html')));
   assert.ok(fs.existsSync(path.join(root,config.outputDirectory,'assets/main.js')));
   assert.equal(config.rewrites,undefined,'Static module requests must not be rewritten to HTML');
+  const globalHeaders = config.headers.find(rule => rule.source === '/(.*)')?.headers || [];
+  const byKey = Object.fromEntries(globalHeaders.map(entry => [entry.key,entry.value]));
+  assert.match(byKey['Content-Security-Policy'] || '',/frame-ancestors 'none'/);
+  assert.equal(byKey['X-Content-Type-Options'],'nosniff');
+  assert.equal(byKey['X-Frame-Options'],'DENY');
+  const assetCache = config.headers.find(rule => rule.source === '/assets/(.*)')?.headers || [];
+  assert.ok(assetCache.some(entry => entry.key === 'Cache-Control' && entry.value.includes('immutable')));
+  assert.match(headers,/\/assets\/\*\s+Cache-Control:[^\n]*immutable/);
+  assert.match(vercelIgnore,/^tests\/$/m);
+  assert.match(vercelIgnore,/^avatar\.png$/m);
+  assert.doesNotMatch(vercelIgnore,/^(scripts\/|package\.json)$/m);
+});
+test('every SVG symbol defined in HTML is referenced',() => {
+  const festivals = fs.readFileSync(path.join(root,'assets/festivals.js'),'utf8');
+  const symbols = [...html.matchAll(/<symbol id="([^"]+)"/g)].map(match => match[1]);
+  assert.ok(symbols.length > 0);
+  for (const id of symbols) {
+    const used = html.includes(`#${id}`) || (id.startsWith('festival-') && festivals.includes(id.slice(9)));
+    assert.ok(used,`Unused SVG symbol: ${id}`);
+  }
 });
 test('HTML uses external scripts and event listeners compatible with a strict CSP',() => {
   assert.doesNotMatch(html,/\son\w+\s*=/i);

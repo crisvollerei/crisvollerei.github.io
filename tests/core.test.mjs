@@ -32,6 +32,7 @@ test('durations agree with shift end dates for implicit, explicit and 24-hour ov
 });
 test('invalid storage values cannot produce an empty or undefined cycle', () => {
   for (const cycle of [[],{},'白班',[null],[2],['']]) assert.equal(Core.normalizeConfig({anchor:'2026-04-18',cycle}),null);
+  for (const name of ['白\u0000班','白\u001b班','白\u007f班','白\u2028班','白\u2029班']) assert.equal(Core.validName(name),false);
   const result = Core.normalizeConfig({anchor:'2026-04-18',cycle:['白班','休假'],shiftDefs:{'白班':{cssClass:'injected',startTime:'oops'}}});
   assert.equal(result.shiftDefs['白班'].cssClass,'day');
   assert.equal(result.shiftDefs['白班'].startTime,'09:00');

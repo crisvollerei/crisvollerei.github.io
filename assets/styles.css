@@ -630,15 +630,7 @@ h1 span { font-weight: 400; }
 [data-theme="dark"] .character-day { opacity: 0; }
 [data-theme="dark"] .character-night { opacity: 1; }
 .art-halo { position: absolute; width: 147px; height: 147px; border-radius: 50%; top: 12px; left: 50%; transform: translateX(-50%); background: radial-gradient(circle,#d6cce760,#e7e3f129 60%,transparent 72%); }
-.art-orbit { position: absolute; height: 140px; width: 140px; border: 1px solid #b4a2cf50; border-radius: 50%; top: 14px; left: 50%; transform: translateX(-50%); }
-.art-orbit::before { content: ''; position: absolute; inset: 8px -13px; border: 1px solid #c3b7d52a; border-radius: 50%; transform: rotate(-25deg); }
-.art-orbit::after { content: ''; position: absolute; top: 20px; left: 12px; height: 4px; width: 4px; background: var(--today-border); border-radius: 50%; }
 [data-theme="dark"] .art-halo { background: radial-gradient(circle,#6388c345,#3950782a 60%,transparent 72%); }
-[data-theme="dark"] .art-orbit { border-color: #8cadd74a; }
-[data-theme="dark"] .art-orbit::before { border-color: #8cadd725; }
-.art-spark { position: absolute; color: var(--today-border); font-size: 22px; }
-.art-spark-one { right: 18px; top: 33px; }
-.art-spark-two { left: 20px; top: 92px; font-size: 14px; }
 .art-caption { position: absolute; left: 0; right: 0; bottom: 5px; color: var(--text-muted); font: 8px ui-monospace,Consolas,monospace; letter-spacing: 2px; text-align: center; }
 .today-card { position: relative; background: linear-gradient(115deg,var(--ribbon-bg),var(--bg-card)); }
 .today-card::before { content: '✧'; position: absolute; top: 7px; right: 11px; color: var(--today-border); opacity: .55; font-size: 17px; pointer-events: none; }
@@ -674,9 +666,6 @@ h1 span { font-weight: 400; }
   .intro-art { width: 125px; height: 137px; top: 4px; right: -3px; }
   .character { height: 227px; }
   .art-halo { height: 115px; width: 115px; }
-  .art-orbit { height: 105px; width: 105px; }
-  .art-spark-one { right: 0; top: 26px; font-size: 17px; }
-  .art-spark-two { left: 4px; top: 88px; font-size: 11px; }
   .art-caption { display: none; }
   .theme-controls { gap: 5px; }
   .theme-auto { width: 28px; height: 28px; font-size: 19px; }

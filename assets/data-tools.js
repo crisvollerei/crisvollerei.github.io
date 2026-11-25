@@ -1,4 +1,4 @@
-import { MAX_BACKUP_BYTES, createBackup, createBackupFile, parseBackup, createBackupText, parseBackupText } from './backup-format.js?v=963d75c9f851';
+import { MAX_BACKUP_BYTES, createBackup, createBackupFile, parseBackup, createBackupText, parseBackupText } from './backup-format.js?v=677982b2f915';
 export function createDataTools({window,ui,schedule,settings,personalization}) {
   const { document, Date } = window;
   const { $, toast } = ui;

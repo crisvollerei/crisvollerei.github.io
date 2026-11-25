@@ -1,4 +1,4 @@
-import Core from './schedule-core.js?v=fc384b3c941b';
+import Core from './schedule-core.js?v=13e89d9a7889';
 import CalendarData from './calendar-data.js?v=3defcf37fd3d';
 export const FESTIVAL_ART = Object.freeze({
   '元旦': {symbol:'new-year',palette:'gold',message:'新的一年，也把日常过得闪闪发光。'},

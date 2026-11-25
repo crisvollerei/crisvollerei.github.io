@@ -5,10 +5,15 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.PORT || 4175);
 const mime = { '.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml' };
-const headers = Object.fromEntries((await fs.readFile(path.join(root,'_headers'),'utf8')).split('\n')
-  .filter(line => /^\s+[^:]+:/.test(line)).map(line => {
-    const colon = line.indexOf(':'); return [line.slice(0,colon).trim(),line.slice(colon+1).trim()];
-  }));
+const headerLines = (await fs.readFile(path.join(root,'_headers'),'utf8')).split(/\r?\n/);
+const globalBlock = [];
+for (let i = headerLines.indexOf('/*') + 1; i > 0 && i < headerLines.length; i++) {
+  if (!/^\s+[^:]+:/.test(headerLines[i])) break;
+  globalBlock.push(headerLines[i]);
+}
+const headers = Object.fromEntries(globalBlock.map(line => {
+  const colon = line.indexOf(':'); return [line.slice(0,colon).trim(),line.slice(colon+1).trim()];
+}));
 http.createServer(async (req,res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url,'http://localhost').pathname);

@@ -1,4 +1,4 @@
-import Core from './schedule-core.js?v=fc384b3c941b';
+import Core from './schedule-core.js?v=13e89d9a7889';
 import CalendarData from './calendar-data.js?v=3defcf37fd3d';
 import { DEFAULT_ANCHOR, DEFAULT_CYCLE, DEFAULT_SHIFT_DEFS } from './config.js?v=68f942b55cf8';
 Core.setLunarCalendar(CalendarData);

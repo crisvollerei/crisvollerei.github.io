@@ -2,7 +2,7 @@
 const styles = ['day', 'night', 'rest', 'noon', 'morning', 'evening'];
 const icons = { day: '☀️', night: '🌙', rest: '🌿', noon: '🌤️', morning: '🌅', evening: '🌆' };
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
-const validName = name => typeof name === 'string' && name.length > 0 && name.length <= 40 && !/\s/u.test(name);
+const validName = name => typeof name === 'string' && name.length > 0 && name.length <= 40 && !/[\s\u0000-\u001f\u007f\u2028\u2029]/u.test(name);
 const validTime = value => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 function parseDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;

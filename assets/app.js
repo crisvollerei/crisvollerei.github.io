@@ -1,12 +1,12 @@
 import { createStorage } from './storage.js?v=f697050b13da';
-import { createUI } from './ui.js?v=4fde5d3b8ae1';
-import { createSchedule } from './schedule.js?v=b1445c1342f7';
-import { createFestivals } from './festivals.js?v=4d4197fe0e0a';
-import { createViews } from './views.js?v=7703a6e887a8';
+import { createUI } from './ui.js?v=24ed3c46b831';
+import { createSchedule } from './schedule.js?v=413c64612428';
+import { createFestivals } from './festivals.js?v=d55c00f13e7c';
+import { createViews } from './views.js?v=ebd2a370cb25';
 import { createCompanion } from './companion.js?v=55425bc50cdc';
-import { createSettings } from './settings.js?v=12d8e95f1f10';
-import { createDataTools } from './data-tools.js?v=d9f3b10aafe0';
-import { createPersonalization } from './personalization.js?v=94ecdda1e9f6';
+import { createSettings } from './settings.js?v=1faca269a24b';
+import { createDataTools } from './data-tools.js?v=94d923368361';
+import { createPersonalization } from './personalization.js?v=b2c13b7db4ae';
 export function createApp(window) {
   const { document, Date } = window;
   const storage = createStorage(window);
@@ -76,7 +76,7 @@ export function createApp(window) {
     const next = getNextWorkDelay(now);
     views.renderNextShifts(now);
     setText('countdownToWork',info.start && now >= info.start && now < info.end ? '正在上班' : next === null ? '暂无工作班' : formatCountdown(next));
-    setText('countdownToOff',!info.start ? '今日休息' : now < info.end ? formatCountdown(info.end - now) : '已下班');
+    setText('countdownToOff',!info.start ? '今日休息' : now < info.start ? '尚未上班' : now < info.end ? formatCountdown(info.end - now) : '已下班');
     updateTodayCardDisplay(info, now);
     updateCompanion(now, info, next);
   }
@@ -119,7 +119,10 @@ export function createApp(window) {
   $('backToToday').addEventListener('click',views.backToToday);
   document.addEventListener('visibilitychange',() => {
     document.documentElement.classList.toggle('page-hidden',document.hidden);
-    if (!document.hidden) updateLiveClockAndCountdown();
+    if (!document.hidden) {
+      if (!ui.activeDialog) settings.syncExternalPresets();
+      updateLiveClockAndCountdown();
+    }
   });
   document.addEventListener('keydown',event => {
     if (ui.activeDialog || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest?.('input,textarea,select,[contenteditable="true"],#companionMessage')) return;

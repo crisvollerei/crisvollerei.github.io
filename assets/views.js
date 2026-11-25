@@ -1,5 +1,5 @@
-import Core from './schedule-core.js?v=fc384b3c941b';
-import { FESTIVAL_ART } from './festivals.js?v=4d4197fe0e0a';
+import Core from './schedule-core.js?v=13e89d9a7889';
+import { FESTIVAL_ART } from './festivals.js?v=d55c00f13e7c';
 export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   const { document, Date } = window;
   const { $, mk, animateElement, motionAllowed, reveal, openDialog, closeDialog } = ui;
@@ -314,7 +314,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     if (!gesture.axis && Math.max(Math.abs(dx),Math.abs(dy)) >= 10) {
       if (Math.abs(dx) <= Math.abs(dy) * 1.2) { gesture = null; return; }
       gesture.axis = 'horizontal';
-      calendar.setPointerCapture?.(event.pointerId);
+      try { calendar.setPointerCapture?.(event.pointerId); } catch (_) {}
     }
   },{passive:true});
   window.addEventListener('pointerup',event => {

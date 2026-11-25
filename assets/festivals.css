@@ -3,6 +3,10 @@
 [data-festival-palette="jade"] { --festival-accent: #7aa18b; --festival-tint: #e4f1e8; --festival-ink: #39644b; }
 [data-festival-palette="gold"] { --festival-accent: #be9954; --festival-tint: #f8edd4; --festival-ink: #785822; }
 [data-festival-palette="blue"] { --festival-accent: #829cb5; --festival-tint: #e5eef6; --festival-ink: #43627c; }
+[data-theme="dark"] [data-festival-palette="coral"] { --festival-accent: #d89088; --festival-tint: #38242b; --festival-ink: #f5c7c1; }
+[data-theme="dark"] [data-festival-palette="jade"] { --festival-accent: #89b89c; --festival-tint: #1f342d; --festival-ink: #bfe2cc; }
+[data-theme="dark"] [data-festival-palette="gold"] { --festival-accent: #d2ae69; --festival-tint: #352d1f; --festival-ink: #f0d8a3; }
+[data-theme="dark"] [data-festival-palette="blue"] { --festival-accent: #90aec9; --festival-tint: #203144; --festival-ink: #c8def2; }
 .calendar { touch-action: pan-y pinch-zoom; }
 .swipe-hint { display: none; color: var(--text-muted); font-size: 11px; white-space: nowrap; }
 .swipe-hint > span { margin-right: 3px; color: var(--theme-ink); }

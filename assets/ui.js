@@ -158,9 +158,8 @@ export function createUI(window) {
     }
     if (event.key !== 'Tab') return;
     const nodes = [...$(active().id).querySelectorAll('button,input,textarea,select')]
-      .filter(node => !node.disabled && !node.closest('[hidden],[inert]'))
-      .sort((a,b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
-    const first = nodes[0], last = nodes.at(-1), isContainer = document.activeElement.getAttribute('role') === 'dialog';
+      .filter(node => !node.disabled && !node.closest('[hidden],[inert]'));
+    const first = nodes[0], last = nodes.at(-1), isContainer = document.activeElement?.getAttribute('role') === 'dialog';
     if (event.shiftKey && (document.activeElement === first || isContainer)) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && (document.activeElement === last || isContainer)) { event.preventDefault(); first?.focus(); }
   });

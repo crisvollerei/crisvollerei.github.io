@@ -1,4 +1,4 @@
-import Core from './schedule-core.js?v=fc384b3c941b';
+import Core from './schedule-core.js?v=13e89d9a7889';
 import { CSS_PRESETS, STYLE_NAMES, PRESET_ICONS, DEFAULT_ANCHOR, DEFAULT_CYCLE, DEFAULT_SHIFT_DEFS } from './config.js?v=68f942b55cf8';
 import { syncAndroidBridge } from './integrations.js?v=924ca4c1da81';
 export function createSettings({window, ui, schedule, views, storage}) {
@@ -13,11 +13,16 @@ export function createSettings({window, ui, schedule, views, storage}) {
     return JSON.stringify([config.anchor,config.cycle,Object.entries(config.shiftDefs).sort(([a],[b])=>a.localeCompare(b))
       .map(([name,def]) => [name,def.emoji,def.cssClass,def.isWork,def.startTime,def.endTime,!!def.crossDay])]);
   }
+  function truncateUnits(text, max) {
+    if (text.length <= max) return text;
+    const code = max > 0 ? text.charCodeAt(max - 1) : 0;
+    return text.slice(0,code >= 0xd800 && code <= 0xdbff ? max - 1 : max);
+  }
   function nameResolver(presets) {
     const used = new Set(presets.map(preset => preset.name)), suffixes = new Map();
     return name => {
       let result = name, suffix = suffixes.get(name) || 1;
-      while (used.has(result)) { const ending = `（${suffix++}）`; result = name.slice(0,40-ending.length)+ending; }
+      while (used.has(result)) { const ending = `（${suffix++}）`; result = truncateUnits(name,40 - ending.length) + ending; }
       suffixes.set(name,suffix); used.add(result); return result;
     };
   }

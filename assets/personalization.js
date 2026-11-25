@@ -114,7 +114,8 @@ export function createPersonalization({window,ui,storage}) {
       if (!context) throw new Error('当前浏览器不支持图片处理，请换用系统浏览器。');
       const side = Math.min(width,height);
       context.drawImage(image,(width-side)/2,(height-side)/2,side,side,0,0,256,256);
-      const avatar = canvas.toDataURL('image/webp',0.86);
+      let avatar = canvas.toDataURL('image/webp',0.86);
+      if (!avatar.startsWith('data:image/webp;') && !validAvatar(avatar)) avatar = canvas.toDataURL('image/jpeg',0.86);
       if (!validAvatar(avatar)) throw new Error('处理后的图片仍然过大，请换一张较简单的图片。');
       draft.avatar = avatar; renderPreview();
       $('avatarStatus').textContent = '头像已处理为 256 × 256 静态图片。仅在本地预览，保存后生效。';

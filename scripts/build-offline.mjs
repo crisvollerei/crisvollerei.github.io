@@ -22,6 +22,10 @@ function embedAsset(url, directory) {
   return `data:${type};base64,${fs.readFileSync(file).toString('base64')}`;
 }
 
+function assertInlineSafe(tag, content, label) {
+  if (new RegExp(`</${tag}`,'i').test(content)) throw new Error(`Inline ${tag} closing sequence in ${label}`);
+}
+
 export function buildOffline() {
   const modules = new Set(), visiting = new Set(), bundled = [];
   const moduleId = file => `qingzheng/${path.relative(path.join(root,'assets'),file).split(path.sep).join('/')}`;
@@ -56,6 +60,7 @@ export function buildOffline() {
   }
   let html = fs.readFileSync(path.join(root,'index.html'),'utf8');
   const styles = [], scripts = [];
+  let bundleScript = '';
   html = html.replace(/[ \t]*<link rel="stylesheet" href="([^"]+)">/g,(tag,url) => {
     const file = assetPath(url);
     styles.push(fs.readFileSync(file,'utf8').replace(/url\(\s*(['"]?)([^)'"\s]+)\1\s*\)/g,
@@ -63,26 +68,30 @@ export function buildOffline() {
     return '';
   });
   const css = styles.join('\n');
+  assertInlineSafe('style',css,'stylesheets');
   html = html.replace(/<script src="([^"]+)"><\/script>/g,(tag,url) => {
     const source = fs.readFileSync(assetPath(url),'utf8');
+    assertInlineSafe('script',source,url);
     scripts.push(source);
     return `<script>${source}</script>`;
   });
   html = html.replace(/<script type="module" src="([^"]+)"><\/script>/g,(tag,url) => {
     bundleModule(assetPath(url));
     const source = `(() => {\n'use strict';\nconst __modules = Object.create(null);\n${bundled.join('\n')}\n})();`;
+    assertInlineSafe('script',source,url);
+    bundleScript = source;
     scripts.push(source);
-    return `<style>${css}</style>\n<script>${source}</script>`;
+    return `<style>${css}</style>`;
   });
   html = html.replace(/((?:src|href|data-src)=")((?:assets\/)[^"]+)(")/g,
     (match,prefix,url,suffix) => prefix+embedAsset(url,root)+suffix);
   html = html.replace('<a class="brand" href="./"','<a class="brand" href="#calendarSection"');
   html = html.replace('</title>','（离线版）</title>');
   // The classic bundle must run after the body, without relying on module deferral.
-  const bundleTag = html.match(/<script>\(\(\) => \{\n'use strict';[\s\S]*?<\/script>/)[0];
-  html = html.replace(bundleTag,'').replace('</body>',`${bundleTag}\n</body>`);
+  if (!bundleScript) throw new Error('Missing entry module script');
+  html = html.replace('</body>',() => `<script>${bundleScript}</script>\n</body>`);
   const policy = `default-src 'none'; script-src ${scripts.map(hash).join(' ')}; style-src ${hash(css)}; img-src data: 'self'; font-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`;
-  html = html.replace(/(<meta http-equiv="Content-Security-Policy" content=")[^"]+(">)/,`$1${policy}$2`);
+  html = html.replace(/(<meta http-equiv="Content-Security-Policy" content=")[^"]+(">)/,(_,open,close) => `${open}${policy}${close}`);
   return html;
 }
 

@@ -91,3 +91,24 @@ test('all six daylight shift labels retain readable small-text contrast on their
     }
   }
 });
+test('light muted/accent tokens and dark festival badges maintain WCAG AA contrast',() => {
+  const styles = fs.readFileSync(new URL('../assets/styles.css',import.meta.url),'utf8');
+  const themes = fs.readFileSync(new URL('../assets/themes.css',import.meta.url),'utf8');
+  const festivals = fs.readFileSync(new URL('../assets/festivals.css',import.meta.url),'utf8');
+  const values = {...variables(styles,/:root\s*\{([^}]+)\}/),...variables(themes,/:root\s*\{([^}]+)\}/)};
+  for (const [fg,bg] of [
+    ['--text-muted','--bg-card'],['--text-muted','--bg-cell'],['--text-muted','--accent-soft'],
+    ['--accent','--bg-card'],['--accent','--accent-soft']
+  ]) {
+    const ratio = contrast(values[fg],values[bg]);
+    assert.ok(ratio >= 4.5,`${fg} on ${bg}: ${ratio.toFixed(2)}:1`);
+  }
+  assert.ok(contrast('#ffffff',values['--accent-strong']) >= 4.5);
+  for (const palette of ['coral','jade','gold','blue']) {
+    const match = festivals.match(new RegExp(`\\[data-theme="dark"\\]\\s*\\[data-festival-palette="${palette}"\\]\\s*\\{([^}]+)\\}`));
+    assert.ok(match,palette);
+    const darkValues = Object.fromEntries([...match[1].matchAll(/(--[\w-]+)\s*:\s*(#[\da-f]{6})\s*;/gi)].map(([,name,value]) => [name,value]));
+    const ratio = contrast(darkValues['--festival-ink'],darkValues['--festival-tint']);
+    assert.ok(ratio >= 4.5,`dark ${palette}: ${ratio.toFixed(2)}:1`);
+  }
+});

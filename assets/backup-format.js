@@ -1,4 +1,4 @@
-import Core from './schedule-core.js?v=fc384b3c941b';
+import Core from './schedule-core.js?v=13e89d9a7889';
 import { DEFAULT_TITLE, normalizeTitle } from './personalization-core.js?v=7b3e66c3c69d';
 
 export const MAX_BACKUP_BYTES = 2 * 1024 * 1024;

@@ -13,3 +13,10 @@ avatar.png
 assets/chibi-day.png
 assets/chibi-night.png
 qingzheng-offline.html
+BACKUP_FORMAT.md
+LICENSE
+vercel.json
+.vercelignore
+.gitattributes
+.gitignore
+.assetsignore

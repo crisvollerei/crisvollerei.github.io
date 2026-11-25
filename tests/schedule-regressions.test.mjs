@@ -127,3 +127,19 @@ test('moving the device year backwards clamps details to the new upper boundary'
   assert.equal(d.querySelector('#detailNext').disabled,true);
   d.querySelector('#detailPrev').click(); assert.match(d.querySelector('#detailDate').textContent,/2027年12月30日/);
 });
+test('off-work countdown distinguishes pre-shift, active shift, finished shift, overnight shift and rest day',t => {
+  const {app,d,setNow} = boot(t,{now:'2026-11-06T07:00:00'});
+  assert.equal(d.querySelector('#countdownToOff').textContent,'尚未上班');
+  setNow('2026-11-06T12:00:00'); app.updateLiveClockAndCountdown();
+  assert.equal(d.querySelector('#countdownToOff').textContent,'05:00:00');
+  setNow('2026-11-06T17:30:00'); app.updateLiveClockAndCountdown();
+  assert.equal(d.querySelector('#countdownToOff').textContent,'已下班');
+  setNow('2026-11-07T10:00:00'); app.updateLiveClockAndCountdown();
+  assert.equal(d.querySelector('#countdownToOff').textContent,'今日休息');
+  const overnight = Core.normalizeConfig({anchor:'2026-11-05',cycle:['夜班','休息'],shiftDefs:{
+    '夜班':{isWork:true,startTime:'20:00',endTime:'08:00',crossDay:true,cssClass:'night'},
+    '休息':{isWork:false,cssClass:'rest'}
+  }});
+  const night = boot(t,{now:'2026-11-06T06:00:00',config:overnight});
+  assert.equal(night.d.querySelector('#countdownToOff').textContent,'02:00:00');
+});
