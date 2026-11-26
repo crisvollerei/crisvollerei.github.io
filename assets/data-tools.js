@@ -20,6 +20,8 @@ export function createDataTools({window,ui,schedule,settings,personalization}) {
     $('importPreview').hidden = true;
     $('backupStatus').textContent = '';
     $('backupSummary').textContent = `当前 ${schedule.cycle.length} 天一循环 · ${settings.presets.length} 个已保存方案`;
+    // On phones the share sheet can send the backup text straight into notes or a chat, without any file.
+    $('shareBackupButton').hidden = typeof window.navigator.share !== 'function';
     showError(); ui.openDialog('dataModal');
   }
   function closeDataTools() {
@@ -76,6 +78,19 @@ export function createDataTools({window,ui,schedule,settings,personalization}) {
         selectBackupText();
         $('backupTextCopyStatus').textContent = '浏览器未允许自动复制，已全选下方文本。请长按或使用系统菜单复制，再另存到安全位置。';
       }
+    }
+  }
+  async function shareBackupText() {
+    if (ui.activeDialog !== 'dataModal' || typeof window.navigator.share !== 'function') return;
+    let text;
+    try { text = createBackupText(captureBackup()); }
+    catch (error) { showError(error.message); return; }
+    showError();
+    try {
+      await window.navigator.share({title:'清蒸排班备份',text});
+      if (ui.activeDialog === 'dataModal') $('backupStatus').textContent = '已打开系统分享。请确认备份文本已完整保存到备忘录或聊天中。';
+    } catch (error) {
+      if (error?.name !== 'AbortError' && ui.activeDialog === 'dataModal') await copyBackupText();
     }
   }
   function invalidateImport() {
@@ -156,5 +171,5 @@ export function createDataTools({window,ui,schedule,settings,personalization}) {
   $('backupFile').addEventListener('change',readBackupFile);
   $('backupTextInput').addEventListener('input',() => { invalidateImport(); $('backupFile').value = ''; });
   ui.onDismiss('dataModal',closeDataTools);
-  return {openDataTools,closeDataTools,exportBackup,importBackup,readBackupFile,copyBackupText,selectBackupText,previewBackupText};
+  return {openDataTools,closeDataTools,exportBackup,importBackup,readBackupFile,copyBackupText,shareBackupText,selectBackupText,previewBackupText};
 }

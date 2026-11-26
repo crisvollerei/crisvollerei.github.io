@@ -1,5 +1,5 @@
 
-export function createCompanion({window, ui, schedule}) {
+export function createCompanion({window, ui, schedule, storage = null}) {
   let companionTheme = '';
   let companionMessageId = 'status';
   let companionQuip = '';
@@ -138,16 +138,18 @@ export function createCompanion({window, ui, schedule}) {
     $('companionCharacter').setAttribute('aria-label',`戳戳${name}，换一句话`);
     updateCompanion();
   }
-  function setCompanionCollapsed(collapsed) {
+  function setCompanionCollapsed(collapsed, remember = false) {
     $('companion').classList.toggle('is-collapsed',collapsed);
     $('companionBubble').hidden = collapsed;
     $('companionToggle').setAttribute('aria-expanded',String(!collapsed));
     $('companionToggle').setAttribute('aria-label',collapsed ? '展开碎碎念' : '收起碎碎念');
     $('companionToggle').replaceChildren(document.createTextNode(collapsed ? '聊两句 ' : '收起 '),mk('span',{text:collapsed ? '⌄' : '⌃'}));
     $('companionToggle').lastElementChild.setAttribute('aria-hidden','true');
+    // Remember the visitor's choice so a collapsed companion stays quiet after reloading.
+    if (remember) storage?.set('qingzheng-companion',collapsed ? 'collapsed' : 'open');
   }
   function refreshCompanion() {
-    setCompanionCollapsed(false);
+    if ($('companionBubble').hidden) setCompanionCollapsed(false,true);
     companionTurn++;
     if (companionTurn % 2) {
       if (!companionQuipBag.length) {
@@ -182,6 +184,7 @@ export function createCompanion({window, ui, schedule}) {
     reveal($('companionMessage'));
   }
   $('companionCharacter').addEventListener('click',refreshCompanion);
-  $('companionToggle').addEventListener('click',() => setCompanionCollapsed(!$('companionBubble').hidden));
+  $('companionToggle').addEventListener('click',() => setCompanionCollapsed(!$('companionBubble').hidden,true));
+  if (storage?.get('qingzheng-companion') === 'collapsed') setCompanionCollapsed(true);
   return { updateCompanion, syncCompanionTheme, companionFacts };
 }

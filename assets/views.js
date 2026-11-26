@@ -8,6 +8,22 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   const now = new Date();
   let viewYear = now.getFullYear(), viewMonth = now.getMonth(), selectedDate = null, pickerYear, lastRenderedMonth = null;
   let detailTrigger = null, detailReturnDate = null, detailReturnSource = null, lastNextShiftsKey = '';
+  function makeShiftMark(name, className) {
+    const mark = mk('span',{cls:`${className} ${getShiftDef(name).cssClass}${isWorkShift(name) ? '' : ' rest-mark'}`});
+    mark.setAttribute('aria-hidden','true');
+    return mark;
+  }
+  function renderShiftTime(target, name, prefix = '') {
+    const def = getShiftDef(name);
+    if (!def.isWork || !schedule.isCrossDayShift(name)) {
+      target.textContent = prefix + shiftTimeText(name);
+      return;
+    }
+    const end = mk('span',{cls:'shift-end-time'}), tag = mk('span',{cls:'next-day-tag',text:'次日'});
+    tag.title = '这个班次在第二天结束';
+    end.append(tag,document.createTextNode(` ${def.endTime}`));
+    target.replaceChildren(document.createTextNode(`${prefix}${def.startTime} — `),end);
+  }
   function renderStats() {
     const stats = calculateMonthlyStats(viewYear, viewMonth);
     const previous = calculateMonthlyStats(viewYear, viewMonth - 1);
@@ -20,7 +36,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       const card = mk('div', { cls:`stat-card ${def.cssClass}` });
       const change = difference === 0 ? '较上月持平' : `较上月 ${difference > 0 ? '+' : ''}${difference} 天`;
       const label = mk('div', {cls:'stat-label'});
-      const dot = mk('span', {cls:'legend-dot'}); dot.setAttribute('aria-hidden','true');
+      const dot = makeShiftMark(name,'legend-dot');
       label.append(dot, mk('span', {text:name}));
       const value = mk('div', {cls:'stat-value', text:count});
       value.append(mk('span', {cls:'stat-unit', text:'天'}));
@@ -47,9 +63,9 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   }
   function renderLegend() {
     $('legendContainer').replaceChildren(...getUniqueShiftsInCycle().map(name => {
-      const def = getShiftDef(name), item = mk('div', {cls:'legend-item'});
+      const item = mk('div', {cls:'legend-item'});
       item.title = `${name} · ${shiftTimeText(name)}`;
-      item.append(mk('span', {cls:`legend-dot ${def.cssClass}`}), mk('span', {text:name})); return item;
+      item.append(makeShiftMark(name,'legend-dot'), mk('span', {text:name})); return item;
     }));
   }
   function renderCalendar() {
@@ -88,7 +104,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
         cell.append(makeFestivalArt(festival));
       }
       const label = mk('span', {cls:'day-shift'});
-      label.append(mk('span',{cls:`shift-dot ${def.cssClass}`}),mk('span',{cls:'day-shift-label',text:name}));
+      label.append(makeShiftMark(name,'shift-dot'),mk('span',{cls:'day-shift-label',text:name}));
       cell.append(heading,label,mk('span',{cls:`lunar-date${term ? ' solar-term' : ''}`,text:term || (lunar.day === 1 ? lunar.monthStr : lunar.dayStr)}));
       if (festival) cell.append(mk('span',{cls:'holiday-badge',text:festival}));
       fragment.append(cell);
@@ -106,7 +122,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   }
   function renderHeatmap() {
     $('heatmapTitle').textContent = `${viewYear} 年度排班总览`;
-    const months = [];
+    const months = [], today = new Date();
     for (let m = 0; m < 12; m++) {
       const month = mk('button',{cls:`heatmap-month${m === viewMonth ? ' viewed-month' : ''}`,onclick:event => {
         const day = event.target.closest('[data-date]')?.dataset.date;
@@ -114,7 +130,9 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
         if (day) showDetail(Core.parseDate(day),event.currentTarget);
         if (!day || window.innerWidth > 640) $('calendarSection').scrollIntoView?.({behavior:motionAllowed() ? 'smooth' : 'auto',block:'start'});
       }});
-      month.setAttribute('aria-label',`查看${viewYear}年${m + 1}月排班`);
+      const current = viewYear === today.getFullYear() && m === today.getMonth();
+      month.setAttribute('aria-label',`查看${viewYear}年${m + 1}月排班${current ? '，本月' : ''}`);
+      if (current) month.setAttribute('aria-current','date');
       month.setAttribute('aria-pressed',String(m === viewMonth));
       const weekdays = mk('span',{cls:'mini-cal-weekdays'}); weekdays.setAttribute('aria-hidden','true');
       for (const label of ['一','二','三','四','五','六','日']) weekdays.append(mk('span',{cls:'mini-cal-wd',text:label}));
@@ -128,7 +146,11 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
         day.title = `${m + 1}月${d}日 · ${getShift(date)}`;
         grid.append(day);
       }
-      month.append(weekdays,grid,mk('span',{cls:'heatmap-month-label',text:`${m + 1}月`})); months.push(month);
+      const label = mk('span',{cls:'heatmap-month-label',text:`${m + 1}月`});
+      if (current) {
+        const note = mk('small',{cls:'current-month-note',text:'本月'}); note.setAttribute('aria-hidden','true'); label.append(note);
+      }
+      month.append(weekdays,grid,label); months.push(month);
     }
     $('heatmapGrid').replaceChildren(...months);
   }
@@ -161,7 +183,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       const dateLabel = mk('span',{cls:'upcoming-date'});
       dateLabel.append(mk('strong',{text:`${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`}),mk('small',{text:index === 0 ? '今天' : index === 1 ? '明天' : getWeekdayCn(date)}));
       const shift = mk('span',{cls:`upcoming-shift ${def.cssClass}`});
-      shift.append(mk('span',{cls:`shift-dot ${def.cssClass}`}),mk('span',{text:name}));
+      shift.append(makeShiftMark(name,'shift-dot'),mk('span',{text:name}));
       row.title = [festival,shiftTimeText(name)].filter(Boolean).join(' · ');
       row.append(dateLabel,shift);
       if (festival) {
@@ -200,7 +222,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     $('detailDate').textContent = `${formatDate(date)} ${getWeekdayCn(date)}${lunar.day ? ` · 农历${lunar.yearGanZhi}年 [${lunar.zodiac}] ${lunar.monthStr}${lunar.dayStr}` : ''}${festival ? ` · ${festival}` : ''}${term && term !== festival ? ` · ${term}` : ''}`;
     $('detailShift').textContent = `${def.emoji} ${name}`;
     $('detailShift').className = `detail-shift ${def.cssClass}`;
-    $('detailTime').textContent = shiftTimeText(name);
+    renderShiftTime($('detailTime'),name);
     $('detailCycle').textContent = getCycleIndex(date) + 1;
     const rest = getDaysToRest(date), consecutive = getConsecutiveShiftDays(date);
     $('detailExtra').replaceChildren(...[
@@ -347,14 +369,21 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   function openPicker() { pickerYear = viewYear; renderPicker(); openDialog('pickerModal'); }
   function closePicker() { closeDialog('pickerModal'); }
   function renderPicker() {
+    const today = new Date();
     $('pickerYearLabel').textContent = `${pickerYear} 年`;
     $('pickerPrev').disabled = pickerYear <= minYear(); $('pickerNext').disabled = pickerYear >= maxYear();
     $('pickerMonths').replaceChildren(...Array.from({length:12},(_,m) => {
       const button = mk('button',{cls:`picker-month-btn${pickerYear === viewYear && m === viewMonth ? ' active' : ''}`,text:`${m + 1}月`,onclick:() => { navigateMonth(pickerYear,m); closePicker(); }});
+      const current = pickerYear === today.getFullYear() && m === today.getMonth();
+      button.setAttribute('aria-label',`查看${pickerYear}年${m + 1}月${current ? '，本月' : ''}`);
+      if (current) {
+        button.setAttribute('aria-current','date');
+        const note = mk('small',{cls:'current-month-note',text:'本月'}); note.setAttribute('aria-hidden','true'); button.append(note);
+      }
       button.setAttribute('aria-pressed',String(pickerYear === viewYear && m === viewMonth)); return button;
     }));
   }
   function pickerPrevYear() { if (pickerYear > minYear()) { pickerYear--; renderPicker(); } }
   function pickerNextYear() { if (pickerYear < maxYear()) { pickerYear++; renderPicker(); } }
-  return { renderStats, renderLegend, renderCalendar, renderHeatmap, renderNextShifts, renderUpcoming, render, renderDetail, showDetail, moveDetail, updateSelection, closeDetail, openYearOverview, minYear, maxYear, navigateMonth, prevMonth, nextMonth, backToToday, openPicker, closePicker, renderPicker, pickerPrevYear, pickerNextYear, get viewYear() { return viewYear; }, get viewMonth() { return viewMonth; }, get pickerYear() { return pickerYear; } };
+  return { renderShiftTime, renderStats, renderLegend, renderCalendar, renderHeatmap, renderNextShifts, renderUpcoming, render, renderDetail, showDetail, moveDetail, updateSelection, closeDetail, openYearOverview, minYear, maxYear, navigateMonth, prevMonth, nextMonth, backToToday, openPicker, closePicker, renderPicker, pickerPrevYear, pickerNextYear, get viewYear() { return viewYear; }, get viewMonth() { return viewMonth; }, get pickerYear() { return pickerYear; } };
 }

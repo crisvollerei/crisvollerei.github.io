@@ -1,12 +1,13 @@
 import { createStorage } from './storage.js?v=f697050b13da';
-import { createUI } from './ui.js?v=24ed3c46b831';
+import { createUI } from './ui.js?v=9f6ce0e96bfe';
 import { createSchedule } from './schedule.js?v=413c64612428';
 import { createFestivals } from './festivals.js?v=d55c00f13e7c';
-import { createViews } from './views.js?v=ebd2a370cb25';
-import { createCompanion } from './companion.js?v=55425bc50cdc';
-import { createSettings } from './settings.js?v=1faca269a24b';
-import { createDataTools } from './data-tools.js?v=94d923368361';
+import { createViews } from './views.js?v=a7d6d9984651';
+import { createCompanion } from './companion.js?v=a735769f74d8';
+import { createSettings } from './settings.js?v=e68cd86bffa9';
+import { createDataTools } from './data-tools.js?v=0c12ec256cb0';
 import { createPersonalization } from './personalization.js?v=b2c13b7db4ae';
+import { createShare } from './share.js?v=a2c2128b1918';
 export function createApp(window) {
   const { document, Date } = window;
   const storage = createStorage(window);
@@ -14,12 +15,13 @@ export function createApp(window) {
   const schedule = createSchedule(storage,Date);
   const festivals = createFestivals({window,ui,schedule});
   const views = createViews({window,ui,schedule,festivals,onUpdateLive:updateLiveClockAndCountdown});
-  const companion = createCompanion({window,ui,schedule});
+  const companion = createCompanion({window,ui,schedule,storage});
   const settings = createSettings({window,ui,schedule,views,storage});
   const personalization = createPersonalization({window,ui,storage});
   const dataTools = createDataTools({window,ui,schedule,settings,personalization});
+  const share = createShare({window,ui,schedule,views,personalization,festivals});
   const { $, mk, reveal, toast } = ui;
-  const { getShiftDef, getCycleIndex, getLunarDate, formatDateISO, getWeekdayCn, shiftTimeText, getEffectiveShiftInfo, formatCountdown, getNextWorkDelay, getDaysToRest } = schedule;
+  const { getShiftDef, getCycleIndex, getLunarDate, formatDateISO, getWeekdayCn, getEffectiveShiftInfo, formatCountdown, getNextWorkDelay, getDaysToRest } = schedule;
   const { getHoliday, renderFestivalNotice } = festivals;
   const { updateCompanion, syncCompanionTheme } = companion;
   const { render } = views;
@@ -46,7 +48,7 @@ export function createApp(window) {
       document.querySelector('.today-card').classList.toggle('has-festival',!!festival);
       lastTodayFestival = festival;
     }
-    $('todayShiftTime').textContent = `${info.isCrossDay ? '昨日班次 · ' : ''}${shiftTimeText(info.shift)}`;
+    views.renderShiftTime($('todayShiftTime'),info.shift,info.isCrossDay ? '昨日班次 · ' : '');
     $('todayCycle').textContent = position;
     $('cycleLength').textContent = schedule.cycle.length;
     const progress = Math.round(position / schedule.cycle.length * 100);
@@ -165,7 +167,11 @@ export function createApp(window) {
     resetAvatar: personalization.resetAvatar, resetTitle: personalization.resetTitle,
     exportBackup: dataTools.exportBackup, importBackup: dataTools.importBackup,
     copyBackupText: dataTools.copyBackupText, selectBackupText: dataTools.selectBackupText,
-    previewBackupText: dataTools.previewBackupText, toggleAutomaticTheme
+    previewBackupText: dataTools.previewBackupText, toggleAutomaticTheme,
+    openExport: share.openExport, closeExport: share.closeExport, downloadCalendar: share.downloadCalendar,
+    copyScheduleText: share.copyScheduleText, shareScheduleText: share.shareScheduleText, selectExportText: share.selectExportText,
+    createMonthImage: share.createMonthImage, shareMonthImage: share.shareMonthImage, downloadMonthImage: share.downloadMonthImage,
+    printCalendar: share.printCalendar, shareBackupText: dataTools.shareBackupText
   };
   for (const button of document.querySelectorAll('[data-action]')) {
     button.addEventListener('click',() => actions[button.dataset.action]?.());
@@ -174,5 +180,5 @@ export function createApp(window) {
     button.addEventListener('click',() => { ui.closeQuickTools(true); actions[button.dataset.quickAction]?.(); });
   }
   init();
-  return { setTheme, enableAutomaticTheme, toggleAutomaticTheme, updateLiveClockAndCountdown, schedule, views, settings, dataTools, personalization, ui, festivals, companion, get liveTimer() { return liveTimer; }, get lastDayKey() { return lastDayKey; } };
+  return { setTheme, enableAutomaticTheme, toggleAutomaticTheme, updateLiveClockAndCountdown, schedule, views, settings, dataTools, personalization, share, ui, festivals, companion, get liveTimer() { return liveTimer; }, get lastDayKey() { return lastDayKey; } };
 }

@@ -307,6 +307,30 @@ export function createSettings({window, ui, schedule, views, storage}) {
     renderCyclePreview();
   }
   function cycleEntries() { return $('cyclePattern').value.trim().split(/\s+/).filter(Boolean); }
+  // Most people know "today is day N of my rotation" better than the original start date.
+  function syncTodayPosition({force = false} = {}) {
+    const input = $('cycleTodayPosition'), cycle = cycleEntries(), anchor = Core.parseDate($('anchorDate').value);
+    const editing = !force && document.activeElement === input;
+    input.max = String(Math.max(1,cycle.length));
+    if (!cycle.length || !anchor) {
+      if (!editing) input.value = '';
+      $('cycleTodayShift').textContent = '';
+      return;
+    }
+    const index = Core.cycleIndex(new Date(),anchor,cycle);
+    if (!editing) input.value = String(index + 1);
+    $('cycleTodayShift').textContent = `今天是「${cycle[index]}」`;
+  }
+  function applyTodayPosition() {
+    if (!draftDefs) return;
+    const cycle = cycleEntries(), position = Number($('cycleTodayPosition').value);
+    if (!cycle.length || !Number.isInteger(position) || position < 1 || position > cycle.length) return;
+    const now = new Date(), today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    $('anchorDate').value = schedule.formatDateISO(schedule.addDays(today,1 - position));
+    renderCyclePreview();
+  }
+  $('cycleTodayPosition').addEventListener('input',applyTodayPosition);
+  $('cycleTodayPosition').addEventListener('blur',() => { if (draftDefs) syncTodayPosition({force:true}); });
   function appendCycleShift(name) {
     if (!draftDefs || !Core.own(draftDefs,name)) return;
     const cycle = cycleEntries();
@@ -347,6 +371,7 @@ export function createSettings({window, ui, schedule, views, storage}) {
       : unknown.length ? `未定义：${unknown.slice(0,6).join('、')}${unknown.length > 6 ? '等' : ''}。保存时会补充定义，请确认时间。`
       : !anchor ? '选择有效的起始日期，即可核对每天的安排。'
       : `预览${cycle.length > 16 ? '前 16 天，完整周期仍会保存；' : '一个完整周期；'}之后从第一个班次重新循环。`;
+    syncTodayPosition();
   }
   $('cyclePattern').addEventListener('input',renderCyclePreview);
   $('anchorDate').addEventListener('input',renderCyclePreview);

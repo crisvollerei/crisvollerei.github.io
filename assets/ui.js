@@ -36,7 +36,8 @@ export function createUI(window) {
   function toast(message) {
     window.clearTimeout(toastTimer);
     $('toast').textContent = message; $('toast').hidden = false;
-    toastTimer = window.setTimeout(() => { $('toast').hidden = true; },3200);
+    // Longer notices stay a little longer so they can be read to the end.
+    toastTimer = window.setTimeout(() => { $('toast').hidden = true; },Math.min(7000,Math.max(3200,String(message).length * 130)));
   }
   function motionAllowed() { return !active() && !!motionPreference && !motionPreference.matches; }
   function animateElement(element, frames, options = {}) {
@@ -139,7 +140,7 @@ export function createUI(window) {
       $(active().id).querySelector('[role="dialog"]').focus({preventScroll:true});
     }
   });
-  for (const id of ['settingsModal','pickerModal','presetModal','confirmModal','dataModal','personalizationModal']) {
+  for (const id of ['settingsModal','pickerModal','presetModal','confirmModal','dataModal','personalizationModal','exportModal']) {
     $(id).addEventListener('click',event => { if (event.target === $(id)) dismissDialog(id); });
   }
   document.addEventListener('compositionstart',event => { compositionTarget = event.target; });
