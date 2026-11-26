@@ -68,75 +68,10 @@ export function buildScheduleText({schedule, start, days, title = '清蒸排班'
   return [`${title} · ${span(list[0].date)} 至 ${span(last)}`,...rows].join('\n');
 }
 
-// The month picture always uses the light palette so it stays legible in chats and photo albums.
-const IMAGE_COLORS = {day:['#3f6d8c','#eef4f8'],night:['#725a93','#f3eff9'],rest:['#367150','#edf5ec'],noon:['#886225','#f9f4e6'],morning:['#246f6b','#e9f5f2'],evening:['#955072','#faf0f4']};
-const IMAGE_FONT = '"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif';
-function fitText(context, text, width) {
-  if (context.measureText(text).width <= width) return text;
-  const chars = [...text];
-  while (chars.length > 1 && context.measureText(`${chars.join('')}…`).width > width) chars.pop();
-  return `${chars.join('')}…`;
-}
-function roundedRect(context, x, y, width, height, radius) {
-  context.beginPath(); context.moveTo(x + radius,y);
-  context.arcTo(x + width,y,x + width,y + height,radius); context.arcTo(x + width,y + height,x,y + height,radius);
-  context.arcTo(x,y + height,x,y,radius); context.arcTo(x,y,x + width,y,radius); context.closePath();
-}
-// Draws one month as a picture people can long-press to save or forward, without handling any files.
-export function drawMonthImage(canvas, {schedule, festivals, year, month, title, today}) {
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('当前浏览器无法生成图片，请改用「复制排班文字」。');
-  const first = (new Date(year,month,1).getDay() + 6) % 7, total = new Date(year,month + 1,0).getDate();
-  const rows = Math.ceil((first + total) / 7), width = 1080, side = 48, gap = 10, cell = (width - side * 2 - gap * 6) / 7, top = 300;
-  canvas.width = width; canvas.height = top + rows * (cell + gap) - gap + 96;
-  const font = (size, weight = 400) => `${weight} ${size}px ${IMAGE_FONT}`;
-  context.fillStyle = '#fbfaf7'; context.fillRect(0,0,canvas.width,canvas.height);
-  context.textBaseline = 'alphabetic'; context.textAlign = 'left';
-  context.fillStyle = '#73748a'; context.font = font(26); context.fillText(fitText(context,title,width - side * 2),side,74);
-  context.fillStyle = '#36374d'; context.font = font(54,600); context.fillText(`${year} 年 ${month + 1} 月`,side,146);
-  const counts = schedule.calculateMonthlyStats(year,month);
-  const work = Object.entries(counts).reduce((sum,[name,count]) => sum + (schedule.isWorkShift(name) ? count : 0),0);
-  context.fillStyle = '#5d5e74'; context.font = font(25);
-  context.fillText(`工作 ${work} 天 · 休息 ${total - work} 天 · 计划工时 ${schedule.calculateWorkHours(year,month)} 小时`,side,194);
-  // The legend carries the shift hours, so the picture is complete on its own.
-  let x = side;
-  context.font = font(21);
-  for (const name of schedule.getUniqueShiftsInCycle()) {
-    const def = schedule.getShiftDef(name), [color] = IMAGE_COLORS[def.cssClass] || IMAGE_COLORS.day;
-    const label = fitText(context,`${name}${def.isWork ? ` ${def.startTime}–${Core.isCrossDay(def) ? '次日' : ''}${def.endTime}` : ''}`,320);
-    const itemWidth = 22 + context.measureText(label).width + 26;
-    if (x + itemWidth > width - side) break;
-    context.fillStyle = color; roundedRect(context,x,224,13,13,4); context.fill();
-    context.fillStyle = '#5d5e74'; context.fillText(label,x + 22,237); x += itemWidth;
-  }
-  context.textAlign = 'center'; context.font = font(22);
-  ['一','二','三','四','五','六','日'].forEach((label,index) => {
-    context.fillStyle = index > 4 ? '#81709f' : '#73748a';
-    context.fillText(`周${label}`,side + index * (cell + gap) + cell / 2,280);
-  });
-  for (let day = 1; day <= total; day++) {
-    const date = new Date(year,month,day), slot = first + day - 1;
-    const left = side + (slot % 7) * (cell + gap), y = top + Math.floor(slot / 7) * (cell + gap);
-    const name = schedule.getShift(date), def = schedule.getShiftDef(name), [color,background] = IMAGE_COLORS[def.cssClass] || IMAGE_COLORS.day;
-    context.fillStyle = background; roundedRect(context,left,y,cell,cell,14); context.fill();
-    if (schedule.isSameDay(date,today)) { context.strokeStyle = '#81709f'; context.lineWidth = 4; roundedRect(context,left + 2,y + 2,cell - 4,cell - 4,13); context.stroke(); }
-    context.textAlign = 'left'; context.fillStyle = '#36374d'; context.font = font(28,600); context.fillText(String(day),left + 14,y + 38);
-    context.textAlign = 'center'; context.fillStyle = color; context.font = font(25,600);
-    context.fillText(fitText(context,name,cell - 14),left + cell / 2,y + 82);
-    const festival = festivals?.getHoliday(date), term = festivals?.getSolarTerm(date), lunar = schedule.getLunarDate(date);
-    const note = festival || term || (lunar.day === 1 ? lunar.monthStr : lunar.dayStr);
-    if (note) { context.fillStyle = festival ? '#a8693a' : '#8a8b9e'; context.font = font(18); context.fillText(fitText(context,note,cell - 12),left + cell / 2,y + cell - 16); }
-  }
-  context.textAlign = 'left'; context.fillStyle = '#9a9bad'; context.font = font(19);
-  context.fillText(fitText(context,`${title} · 生成于 ${schedule.formatDate(today)} · 以实际排班为准`,width - side * 2),side,canvas.height - 38);
-  return canvas;
-}
-
-export function createShare({window, ui, schedule, views, personalization, festivals}) {
+export function createShare({window, ui, schedule, views, personalization}) {
   const { document, Date } = window;
-  const { $, toast } = ui;
-  let copyRevision = 0, printTheme = null, image = null;
-  const touchDevice = () => !!window.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches;
+  const { $ } = ui;
+  let copyRevision = 0;
   const canShare = () => typeof window.navigator.share === 'function';
   function title() { return personalization?.title || '清蒸排班'; }
   function showError(message = '', field = null) {
@@ -153,17 +88,14 @@ export function createShare({window, ui, schedule, views, personalization, festi
   }
   function renderSummary() {
     const options = readOptions({focus:false});
-    if (!options) { $('exportSummary').textContent = '选择开始日期后，这里会显示将要导出的内容。'; return; }
+    $('exportMonthLabel').textContent = options ? `预览 ${options.start.getMonth() + 1} 月排班图` : '预览月历';
+    if (!options) { $('exportSummary').textContent = '请选择有效的日期和范围。'; return; }
     const {work,rest,last} = summarizeExport(schedule,options.start,options.days,options.includeRest);
     $('exportSummary').textContent = `${schedule.formatDate(options.start)} 至 ${schedule.formatDate(last)} · 工作 ${work} 天 · 休息 ${rest} 天`;
-    $('exportImageButton').textContent = `生成 ${options.start.getMonth() + 1} 月排班图`;
   }
   function resetText() {
     copyRevision++;
     $('exportTextOutput').value = ''; $('exportTextBox').hidden = true; $('exportTextStatus').textContent = '';
-  }
-  function resetImage() {
-    image = null; $('exportImageBox').hidden = true; $('exportImage').removeAttribute('src'); $('exportImageHint').textContent = '';
   }
   function openExport() {
     if (ui.activeDialog === 'exportModal') return;
@@ -175,11 +107,11 @@ export function createShare({window, ui, schedule, views, personalization, festi
     // The system share sheet reaches chats and notes directly; copying stays as the universal fallback.
     $('exportShareText').hidden = !canShare();
     $('exportCopyText').className = `button ${canShare() ? 'button-secondary' : 'button-primary'}`;
-    resetText(); resetImage(); showError(); $('exportStatus').textContent = '';
+    resetText(); showError(); $('exportStatus').textContent = '';
     renderSummary();
     ui.openDialog('exportModal');
   }
-  function closeExport() { resetText(); resetImage(); showError(); ui.closeDialog('exportModal'); }
+  function closeExport() { resetText(); showError(); ui.closeDialog('exportModal'); }
   function downloadCalendar() {
     if (ui.activeDialog !== 'exportModal') return;
     const options = readOptions();
@@ -226,62 +158,22 @@ export function createShare({window, ui, schedule, views, personalization, festi
     if (!options) return;
     showError();
     const text = buildScheduleText({schedule,...options,title:title()});
+    const revision = ++copyRevision;
     try { await window.navigator.share({title:`${title()} · 排班`,text}); }
-    catch (error) { if (error?.name !== 'AbortError' && ui.activeDialog === 'exportModal') await copyScheduleText(); }
+    catch (error) { if (error?.name !== 'AbortError' && revision === copyRevision && ui.activeDialog === 'exportModal') await copyScheduleText(); }
   }
-  function imageFile() {
-    const [meta,data] = image.dataURL.split(','), bytes = Uint8Array.from(window.atob(data),char => char.charCodeAt(0));
-    return new window.File([bytes],image.name,{type:meta.slice(5,meta.indexOf(';'))});
-  }
-  function createMonthImage() {
+  function previewExportMonth() {
     if (ui.activeDialog !== 'exportModal') return;
     const options = readOptions();
     if (!options) return;
-    showError();
-    const year = options.start.getFullYear(), month = options.start.getMonth();
-    try {
-      const canvas = drawMonthImage(document.createElement('canvas'),{schedule,festivals,year,month,title:title(),today:new Date()});
-      image = {dataURL:canvas.toDataURL('image/png'),name:`${title()}-${year}年${month + 1}月排班.png`};
-    } catch (error) { resetImage(); showError(error?.message || '当前浏览器无法生成图片，请改用「复制排班文字」。'); return; }
-    $('exportImage').src = image.dataURL;
-    $('exportImage').alt = `${year}年${month + 1}月排班图`;
-    $('exportImageBox').hidden = false;
-    let shareFiles = false;
-    try { shareFiles = canShare() && !!window.navigator.canShare?.({files:[imageFile()]}); } catch (_) {}
-    $('exportImageShare').hidden = !shareFiles;
-    $('exportImageHint').textContent = touchDevice() ? '长按图片，即可保存到相册或直接转发。' : '可以右键图片复制或另存，也可以点「下载图片」。';
-    $('exportImage').scrollIntoView?.({block:'nearest'});
+    showError(); $('exportImageButton').focus({preventScroll:true});
+    views.monthSheet.open(options.start,{nested:true});
   }
-  async function shareMonthImage() {
-    if (ui.activeDialog !== 'exportModal' || !image) return;
-    try { await window.navigator.share({files:[imageFile()],title:`${title()} · 排班图`}); }
-    catch (error) { if (error?.name !== 'AbortError' && ui.activeDialog === 'exportModal') $('exportImageHint').textContent = '暂时无法打开系统分享，请长按图片保存或转发。'; }
-  }
-  function downloadMonthImage() {
-    if (ui.activeDialog !== 'exportModal' || !image) return;
-    try {
-      const link = document.createElement('a'); link.href = image.dataURL; link.download = image.name;
-      document.body.append(link); link.click(); link.remove();
-    } catch (_) { $('exportImageHint').textContent = '当前浏览器无法下载，请右键或长按图片保存。'; }
-  }
-  function printCalendar() {
-    if (ui.activeDialog === 'exportModal') closeExport();
-    window.setTimeout(() => { try { window.print?.(); } catch (_) { toast('当前浏览器不支持打印，请使用系统浏览器打开'); } },80);
-  }
-  // Printing always uses the light palette so paper output stays legible and saves ink.
-  window.addEventListener('beforeprint',() => {
-    if (printTheme !== null) return;
-    printTheme = document.documentElement.dataset.theme;
-    document.documentElement.dataset.theme = 'light';
-  });
-  window.addEventListener('afterprint',() => {
-    if (printTheme === null) return;
-    document.documentElement.dataset.theme = printTheme; printTheme = null;
-  });
   for (const id of ['exportStart','exportDays','exportIncludeRest','exportAlarm']) {
-    $(id).addEventListener('input',() => { showError(); resetText(); if (id === 'exportStart') resetImage(); renderSummary(); });
-    $(id).addEventListener('change',() => { renderSummary(); });
+    const update = () => { showError(); resetText(); renderSummary(); };
+    $(id).addEventListener('input',update);
+    $(id).addEventListener('change',update);
   }
   ui.onDismiss('exportModal',closeExport);
-  return {openExport,closeExport,downloadCalendar,copyScheduleText,shareScheduleText,selectExportText,createMonthImage,shareMonthImage,downloadMonthImage,printCalendar,renderSummary};
+  return {openExport,closeExport,downloadCalendar,copyScheduleText,shareScheduleText,selectExportText,previewExportMonth,renderSummary};
 }

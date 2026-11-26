@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 128" fill="none">
+  <defs>
+    <g id="petal"><path d="M0-2C-6-8-15-16-11-23c3-6 7-3 9-6 4-5 11 0 12 6 2 8-4 17-10 21Z" fill="currentColor" stroke="#ad655c" stroke-width=".8"/><path d="M0-4q-4-11-4-18m5 15 4-12" stroke="#ab6156" stroke-opacity=".65" stroke-width=".8"/></g>
+    <g id="flower"><use href="#petal"/><use href="#petal" transform="rotate(53)"/><use href="#petal" transform="rotate(106)"/><use href="#petal" transform="rotate(157)"/><use href="#petal" transform="rotate(206)"/><use href="#petal" transform="rotate(256)"/><use href="#petal" transform="rotate(308)"/><circle r="6.3" fill="#965e36"/><g fill="#e7b451"><circle cx="-3" cy="-2" r="1.6"/><circle cx="1" cy="-3" r="1.2"/><circle cx="3" cy="1" r="1.5"/><circle cx="-1" cy="2" r="1.3"/></g></g>
+    <g id="leaf"><path d="M0 0Q-11-17-34-19q13 17 34 19Z" fill="#91a18a" stroke="#6d826f" stroke-width=".7"/><path d="m-2-1-25-14" stroke="#e6e4cb" stroke-width=".9"/></g>
+  </defs>
+  <g stroke="#75836c" stroke-width="1.8" stroke-linecap="round">
+    <path d="M236 137c-2-30 12-59 3-94m-5 74c-13-27-29-44-53-55m55 43c23-30 39-39 67-49m-63 36c-5-22-17-40-27-49m34 41c23-19 43-21 71-21M88 133c42-22 62-43 76-69"/>
+  </g>
+  <g><use href="#leaf" transform="translate(236 103) rotate(12)"/><use href="#leaf" transform="translate(239 82) rotate(-120) scale(.87)"/><use href="#leaf" transform="translate(209 88) rotate(-15) scale(.73)"/><use href="#leaf" transform="translate(266 79) rotate(39) scale(.72)"/><use href="#leaf" transform="translate(276 68) rotate(-145) scale(.65)"/><use href="#leaf" transform="translate(146 90) rotate(35) scale(.6)"/><use href="#leaf" transform="translate(129 106) rotate(-144) scale(.72)"/></g>
+  <g color="#eab4a6"><use href="#flower" transform="translate(240 37) rotate(-12) scale(1.07 .95)"/></g>
+  <g color="#efc784"><use href="#flower" transform="translate(176 63) rotate(18) scale(.71 .62)"/></g>
+  <g color="#df9788"><use href="#flower" transform="translate(303 54) rotate(-22) scale(.68 .51)"/></g>
+  <g stroke="#9c8d66" stroke-linecap="round"><path d="M173 131q-18-28-57-49m39 33q-4-14-8-22m-3 15-19-7m10 1-11-14m41 34 6-14"/></g>
+  <g fill="#c59857"><ellipse cx="115" cy="81" rx="4" ry="2" transform="rotate(25 115 81)"/><ellipse cx="147" cy="92" rx="2" ry="4" transform="rotate(-22 147 92)"/><ellipse cx="124" cy="100" rx="4" ry="2"/><ellipse cx="171" cy="108" rx="2" ry="4" transform="rotate(25 171 108)"/></g>
+</svg>

@@ -1,25 +1,25 @@
 import { createStorage } from './storage.js?v=f697050b13da';
-import { createUI } from './ui.js?v=9f6ce0e96bfe';
+import { createUI } from './ui.js?v=7e20857759cc';
 import { createSchedule } from './schedule.js?v=413c64612428';
 import { createFestivals } from './festivals.js?v=d55c00f13e7c';
-import { createViews } from './views.js?v=a7d6d9984651';
+import { createViews } from './views.js?v=95cfb49d45c3';
 import { createCompanion } from './companion.js?v=a735769f74d8';
-import { createSettings } from './settings.js?v=e68cd86bffa9';
+import { createSettings } from './settings.js?v=f708e35c7fde';
 import { createDataTools } from './data-tools.js?v=0c12ec256cb0';
 import { createPersonalization } from './personalization.js?v=b2c13b7db4ae';
-import { createShare } from './share.js?v=a2c2128b1918';
+import { createShare } from './share.js?v=d0c349116d02';
 export function createApp(window) {
   const { document, Date } = window;
   const storage = createStorage(window);
   const ui = createUI(window);
   const schedule = createSchedule(storage,Date);
   const festivals = createFestivals({window,ui,schedule});
-  const views = createViews({window,ui,schedule,festivals,onUpdateLive:updateLiveClockAndCountdown});
+  const personalization = createPersonalization({window,ui,storage});
+  const views = createViews({window,ui,schedule,festivals,storage,getImageTitle:() => personalization.title,onUpdateLive:updateLiveClockAndCountdown});
   const companion = createCompanion({window,ui,schedule,storage});
   const settings = createSettings({window,ui,schedule,views,storage});
-  const personalization = createPersonalization({window,ui,storage});
   const dataTools = createDataTools({window,ui,schedule,settings,personalization});
-  const share = createShare({window,ui,schedule,views,personalization,festivals});
+  const share = createShare({window,ui,schedule,views,personalization});
   const { $, mk, reveal, toast } = ui;
   const { getShiftDef, getCycleIndex, getLunarDate, formatDateISO, getWeekdayCn, getEffectiveShiftInfo, formatCountdown, getNextWorkDelay, getDaysToRest } = schedule;
   const { getHoliday, renderFestivalNotice } = festivals;
@@ -170,8 +170,7 @@ export function createApp(window) {
     previewBackupText: dataTools.previewBackupText, toggleAutomaticTheme,
     openExport: share.openExport, closeExport: share.closeExport, downloadCalendar: share.downloadCalendar,
     copyScheduleText: share.copyScheduleText, shareScheduleText: share.shareScheduleText, selectExportText: share.selectExportText,
-    createMonthImage: share.createMonthImage, shareMonthImage: share.shareMonthImage, downloadMonthImage: share.downloadMonthImage,
-    printCalendar: share.printCalendar, shareBackupText: dataTools.shareBackupText
+    previewExportMonth: share.previewExportMonth, shareBackupText: dataTools.shareBackupText
   };
   for (const button of document.querySelectorAll('[data-action]')) {
     button.addEventListener('click',() => actions[button.dataset.action]?.());

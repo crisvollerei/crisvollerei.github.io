@@ -71,7 +71,7 @@ export function createUI(window) {
     compositionTarget = null;
     if (!nested) while (active()) dismissDialog(active().id);
     const overlay = $(id), content = overlay.querySelector('[role="dialog"]');
-    const inputView = !!content.querySelector('input,textarea') || !!active()?.inputView;
+    const inputView = !!content.querySelector('input,textarea') || (!!active()?.inputView && id !== 'monthSheetModal');
     const entry = {id, trigger:document.activeElement, inputView, scroll:{x:window.scrollX,y:window.scrollY}};
     if (active()) { $(active().id).hidden = true; $(active().id).inert = true; }
     lifecycle.pause?.();
@@ -140,7 +140,7 @@ export function createUI(window) {
       $(active().id).querySelector('[role="dialog"]').focus({preventScroll:true});
     }
   });
-  for (const id of ['settingsModal','pickerModal','presetModal','confirmModal','dataModal','personalizationModal','exportModal']) {
+  for (const id of ['settingsModal','pickerModal','presetModal','confirmModal','dataModal','personalizationModal','exportModal','agendaCopyModal','monthSheetModal','monthImageModal']) {
     $(id).addEventListener('click',event => { if (event.target === $(id)) dismissDialog(id); });
   }
   document.addEventListener('compositionstart',event => { compositionTarget = event.target; });
@@ -158,8 +158,8 @@ export function createUI(window) {
       event.preventDefault(); dismissDialog(active().id);
     }
     if (event.key !== 'Tab') return;
-    const nodes = [...$(active().id).querySelectorAll('button,input,textarea,select')]
-      .filter(node => !node.disabled && !node.closest('[hidden],[inert]'));
+    const nodes = [...$(active().id).querySelectorAll('button,input,textarea,select,summary,[tabindex="0"]')]
+      .filter(node => node.tabIndex !== -1 && !node.disabled && !node.closest('[hidden],[inert]') && (node.tagName === 'SUMMARY' || !node.closest('details:not([open])')));
     const first = nodes[0], last = nodes.at(-1), isContainer = document.activeElement?.getAttribute('role') === 'dialog';
     if (event.shiftKey && (document.activeElement === first || isContainer)) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && (document.activeElement === last || isContainer)) { event.preventDefault(); first?.focus(); }

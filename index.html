@@ -8,11 +8,19 @@
   <script src="assets/theme-init.js?v=10d10acba7f4"></script>
   <link rel="icon" type="image/png" href="assets/favicon.png?v=0add43154703">
   <link rel="stylesheet" href="assets/styles.css?v=a35e850d06b0"><link rel="stylesheet" href="assets/themes.css?v=e3d55aa7453a"><link rel="stylesheet" href="assets/festivals.css?v=12dc1a2db029"><link rel="stylesheet" href="assets/companion.css?v=7e94f54ac688"><link rel="stylesheet" href="assets/motion.css?v=8fee222884dd">
-  <link rel="stylesheet" href="assets/experience.css?v=101cb43f8745">
-  <script type="module" src="assets/main.js?v=418e6d291823"></script>
+  <link rel="stylesheet" href="assets/experience.css?v=8f8e4fa151a4">
+  <link rel="stylesheet" href="assets/month-sheet.css?v=b34d48f8f731">
+  <script type="module" src="assets/main.js?v=72c60b879874"></script>
 </head>
 <body><div class="world-ornaments" aria-hidden="true"><svg class="world-wing ornament-day" viewBox="0 0 300 120" focusable="false"><use href="#silver-wings"></use></svg><svg class="world-tide ornament-night" viewBox="0 0 640 100" preserveAspectRatio="none" focusable="false"><use href="#night-tide"></use></svg></div><svg class="theme-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
   <defs>
+    <!-- Lucide Copy, Printer, Image and Share icons, ISC License. Copyright (c) 2026 Lucide Icons and Contributors.
+      Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+      THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. -->
+    <symbol id="agenda-copy-icon" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="month-image-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+    <symbol id="month-share-icon" viewBox="0 0 24 24"><path d="M12 16V3m-4 4 4-4 4 4M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="month-printer-icon" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol>
     <symbol id="silver-knot" viewBox="0 0 64 64">
       <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M32 21C11-2 1 22 23 32C1 44 15 64 32 43C49 64 64 44 42 32C64 20 52-1 32 21Z"></path>
@@ -231,9 +239,14 @@
         <section class="calendar-section panel enter-stage" id="calendarSection" aria-label="月度排班日历"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div>
           <span class="folio-motes" aria-hidden="true"><span class="folio-mote"></span><span class="folio-mote"></span></span>
           <div class="calendar-heading"><div><p class="eyebrow calendar-eyebrow">月度安排 <span class="heading-rule"></span></p><div class="month-navigation"><button class="month-title" id="monthTitle" data-action="openPicker" aria-haspopup="dialog" aria-live="polite" aria-atomic="true" title="选择年月"></button><div class="month-arrows"><button class="nav-btn" id="prevBtn" data-action="prevMonth" aria-label="上个月">‹</button><button class="nav-btn" id="nextBtn" data-action="nextMonth" aria-label="下个月">›</button></div></div></div><div class="calendar-actions"><span class="month-meta" id="monthMeta"></span><button class="button today-button" id="backToToday" title="回到今天 · T"><span class="today-button-dot" aria-hidden="true"></span> 今天</button></div></div>
-          <div class="calendar-subhead"><div class="legend" id="legendContainer" aria-label="班次图例"></div><span class="calendar-tip">留一点时间，给自己。</span><span class="swipe-hint"><span aria-hidden="true">↔</span> 左右滑动切月</span></div>
+          <div class="calendar-subhead">
+            <div class="legend" id="legendContainer" role="group" aria-label="按班次突出显示日期"></div>
+            <div class="legend-context"><span id="shiftFocusStatus" role="status" aria-atomic="true"></span><span class="calendar-tip">留一点时间，给自己。</span><span class="swipe-hint"><span aria-hidden="true">↔</span> 左右滑动切月</span></div>
+          </div>
           <div class="calendar"><div class="weekdays" aria-hidden="true"><div>周一 <span>MON</span></div><div>周二 <span>TUE</span></div><div>周三 <span>WED</span></div><div>周四 <span>THU</span></div><div>周五 <span>FRI</span></div><div class="weekend">周六 <span>SAT</span></div><div class="weekend">周日 <span>SUN</span></div></div><div class="days-grid" id="daysGrid"></div></div>
-          <div class="calendar-footnote"><span><span class="today-key"></span> 今天 <span class="selection-key"></span> 已选日期</span><span class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> 切月 <kbd>T</kbd> 今天 <kbd>Esc</kbd> 关闭</span><span>点击日期查看安排 <span aria-hidden="true">↗</span></span></div>
+          <div class="calendar-footnote"><span><span class="today-key"></span> 今天 <span class="selection-key"></span> 已选日期</span><span class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> 切月 <kbd>T</kbd> 今天 <kbd>Esc</kbd> 关闭</span><span>点击日期查看安排 <span aria-hidden="true">↗</span></span>
+            <button type="button" class="agenda-copy" id="openMonthSheet" aria-haspopup="dialog" title="预览、复制或打印当前月份"><svg class="icon" aria-hidden="true"><use href="#month-printer-icon"></use></svg>分享本月</button>
+          </div>
         </section>
 
         <aside class="sidebar" aria-label="月度统计和近期安排">
@@ -247,8 +260,16 @@
                 <div class="balance-legend"><div class="balance-item"><span class="balance-dot balance-work" aria-hidden="true"></span><span>工作 <strong id="workDays">0 天</strong></span><span class="balance-percent" id="workPercent">0%</span></div><div class="balance-item"><span class="balance-dot balance-rest" aria-hidden="true"></span><span>休息 <strong id="restDays">0 天</strong></span><span class="balance-percent" id="restPercent">0%</span></div></div>
               </div>
             </div></section>
-          <section class="upcoming-panel panel enter-stage" id="upcomingPanel" aria-labelledby="upcomingTitle"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><div class="section-heading"><div><p class="eyebrow">不用等到明天才知道</p><h2 id="upcomingTitle">未来七天</h2></div><span class="week-range" id="weekRange"></span></div><div class="upcoming-list" id="upcomingList"></div><p class="agenda-footnote"><span class="live-dot" aria-hidden="true"></span> 每一天，都提前心中有数</p></section>
-          <section class="detail-panel panel" id="detailPanel" aria-label="选中日期详情"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><div class="detail-header"><div><p class="eyebrow" id="detailRelative">这一天的安排</p><h2 id="detailHeading" tabindex="-1"></h2></div><button class="icon-btn" data-action="closeDetail" aria-label="关闭日期详情">×</button></div><div class="festival-notice detail-festival" id="detailFestival" hidden></div><div class="detail-summary"><strong class="detail-shift" id="detailShift"></strong><span id="detailTime"></span></div><p class="detail-date" id="detailDate"></p><div class="detail-cycle">周期第 <b id="detailCycle"></b> 天</div><div class="detail-extra" id="detailExtra"></div><span class="visually-hidden" id="detailAnnouncement" role="status" aria-live="polite"></span><div class="detail-navigation" role="group" aria-label="连续查看日期"><button class="button button-secondary" id="detailPrev" data-action="prevDetail"><span>‹ 前一天</span><small id="detailPrevPreview"></small></button><button class="button button-secondary" id="detailNext" data-action="nextDetail"><span>后一天 ›</span><small id="detailNextPreview"></small></button></div><button class="button button-secondary detail-back" data-action="closeDetail">← 返回未来七天</button></section>
+          <section class="upcoming-panel panel enter-stage" id="upcomingPanel" aria-labelledby="upcomingTitle"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><div class="section-heading"><div><p class="eyebrow">不用等到明天才知道</p><h2 id="upcomingTitle">未来七天</h2></div><span class="week-range" id="weekRange"></span></div><div class="upcoming-list" id="upcomingList"></div>
+            <div class="agenda-footnote"><span class="agenda-caption"><span class="live-dot" aria-hidden="true"></span> 每一天，都提前心中有数</span>
+              <button type="button" class="agenda-copy" id="copyWeekAgenda" title="复制未来七天排班" aria-label="复制未来七天排班"><svg class="icon" aria-hidden="true"><use href="#agenda-copy-icon"></use></svg>复制七天</button>
+            </div>
+          </section>
+          <section class="detail-panel panel" id="detailPanel" aria-label="选中日期详情"><div class="theme-frame" aria-hidden="true"><span class="frame-emblem" aria-hidden="true"><svg class="ornament-day" viewBox="0 0 64 64" focusable="false"><use href="#silver-knot"></use></svg><svg class="ornament-night" viewBox="0 0 100 64" focusable="false"><use href="#night-bow"></use></svg></span><svg class="frame-pendant ornament-day" viewBox="0 0 40 64" focusable="false"><use href="#silver-pendant"></use></svg><svg class="frame-tail ornament-night" viewBox="0 0 64 64" focusable="false"><use href="#night-tail"></use></svg></div><div class="detail-header"><div><p class="eyebrow" id="detailRelative">这一天的安排</p><h2 id="detailHeading" tabindex="-1"></h2></div><button class="icon-btn" data-action="closeDetail" aria-label="关闭日期详情">×</button></div><div class="festival-notice detail-festival" id="detailFestival" hidden></div><div class="detail-summary"><strong class="detail-shift" id="detailShift"></strong><span id="detailTime"></span></div><p class="detail-date" id="detailDate"></p><div class="detail-cycle">周期第 <b id="detailCycle"></b> 天</div><div class="detail-extra" id="detailExtra"></div><span class="visually-hidden" id="detailAnnouncement" role="status" aria-live="polite"></span><div class="detail-navigation" role="group" aria-label="连续查看日期"><button class="button button-secondary" id="detailPrev" data-action="prevDetail"><span>‹ 前一天</span><small id="detailPrevPreview"></small></button><button class="button button-secondary" id="detailNext" data-action="nextDetail"><span>后一天 ›</span><small id="detailNextPreview"></small></button></div>
+            <div class="detail-actions"><button class="button button-secondary detail-back" data-action="closeDetail">← 返回未来七天</button>
+              <button type="button" class="agenda-copy" id="copyDayAgenda" title="复制选中日期的排班" aria-label="复制当天排班"><svg class="icon" aria-hidden="true"><use href="#agenda-copy-icon"></use></svg>复制当天</button>
+            </div>
+          </section>
         </aside>
       </div>
 
@@ -266,9 +287,18 @@
       <div class="settings-reset"><p id="settingsResetHint">设置乱了？恢复初始周期和班次，再重新调整。不会删除已保存方案。</p><button type="button" class="button button-secondary button-small" data-action="restoreDefaultSettings" aria-describedby="settingsResetHint">恢复默认</button></div>
       <p class="form-note settings-status" id="settingsStatus" role="status" tabindex="-1" hidden></p>
       <div class="form-group"><label for="anchorDate">周期起始日期</label><input type="date" id="anchorDate" min="1900-01-01" max="2100-12-31" aria-describedby="anchorHint settingsError"><small id="anchorHint">这一天对应周期中的第一个班次。</small></div>
-      <div class="form-group anchor-helper"><label for="cycleTodayPosition">不确定起始日期？填写今天是周期第几天</label><div class="anchor-helper-row"><span aria-hidden="true">今天是第</span><input id="cycleTodayPosition" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" aria-describedby="cycleTodayShift cycleTodayHint"><span aria-hidden="true">天</span><span class="anchor-helper-shift" id="cycleTodayShift"></span></div><small id="cycleTodayHint">会自动推算上面的起始日期，保存设置后生效。</small></div>
       <div class="form-group"><label for="cyclePattern">周期顺序</label><textarea id="cyclePattern" rows="3" placeholder="白班 夜班 休息 白班 夜班 休息 休息 休息" aria-describedby="cycleHint settingsError"></textarea><small id="cycleHint">用空格分隔，也可以点下方班次依次添加。每个名称最多 40 个字符。</small></div>
       <div class="cycle-builder"><div class="cycle-quick-add" id="cycleQuickAdd" role="group" aria-label="向周期末尾添加班次"></div><button class="button button-secondary button-small" id="cycleRemoveLast" data-action="removeLastCycleShift">撤回最后一天</button></div>
+      <section class="cycle-locator" aria-labelledby="cycleLocatorTitle">
+        <h3 id="cycleLocatorTitle">按今天定位周期</h3>
+        <div class="locator-fields">
+          <label id="cycleLocatorRangeField" hidden>查看范围<select id="cycleLocatorRange"></select></label>
+          <label>今天是周期第几天<select id="cycleLocatorDay" aria-describedby="cycleLocatorStatus"></select></label>
+        </div>
+        <ol class="locator-preview" id="cycleLocatorPreview" aria-label="按班次开始日期核对三天安排" hidden></ol>
+        <details class="locator-direct"><summary>直接输入周期天数</summary><label for="cycleTodayPosition">今天是第 <input id="cycleTodayPosition" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" aria-describedby="cycleTodayShift cycleLocatorStatus"> 天</label><span id="cycleTodayShift"></span></details>
+        <p class="form-note" id="cycleLocatorStatus" role="status"></p>
+      </section>
       <section class="cycle-preview" aria-labelledby="cyclePreviewTitle"><div class="cycle-preview-heading"><h3 id="cyclePreviewTitle">周期预览</h3><span id="cycleSummary" role="status" aria-live="polite"></span></div><ol class="cycle-preview-days" id="cyclePreviewDays"></ol><p class="form-note" id="cyclePreviewHint"></p></section>
       <div class="settings-section-heading"><h3>班次与时间</h3><button class="button button-secondary button-small" data-action="addShiftDef">＋ 添加班次</button></div>
       <div class="form-group shift-name-field"><label for="shiftName">新班次名称</label><input id="shiftName" type="text" maxlength="40" autocomplete="off" enterkeyhint="done" placeholder="例如：早班、值班" aria-describedby="shiftNameHint settingsError"><small id="shiftNameHint">填写名称后点击“添加班次”，或按回车；不能包含空格。</small></div>
@@ -309,15 +339,13 @@
         <div class="backup-actions"><button class="button button-primary" type="button" id="exportShareText" data-action="shareScheduleText" hidden>分享排班</button><button class="button button-secondary" type="button" id="exportCopyText" data-action="copyScheduleText">复制排班文字</button></div>
         <div class="backup-text-export" id="exportTextBox" hidden><div class="form-group"><label for="exportTextOutput">排班文字</label><textarea id="exportTextOutput" rows="6" readonly spellcheck="false" aria-describedby="exportTextStatus"></textarea></div><button class="button button-secondary" type="button" data-action="selectExportText">全选文字</button><p class="form-note" id="exportTextStatus" role="status"></p></div>
       </div></section>
-      <section class="data-section" aria-labelledby="exportImageTitle"><span class="data-step" aria-hidden="true">02</span><div><h3 id="exportImageTitle">存成月历图片</h3><p class="form-note">生成开始日期所在月份的排班图。手机上长按图片就能存进相册或转发，在微信里也能用。</p>
-        <button class="button button-secondary" type="button" id="exportImageButton" data-action="createMonthImage">生成月历图片</button>
-        <div class="export-image-box" id="exportImageBox" hidden><img id="exportImage" alt=""><p class="form-note" id="exportImageHint" role="status"></p><div class="backup-actions"><button class="button button-secondary" type="button" id="exportImageShare" data-action="shareMonthImage" hidden>分享图片</button><button class="button button-secondary desktop-only" type="button" data-action="downloadMonthImage">下载图片</button></div></div>
+      <section class="data-section" aria-labelledby="exportImageTitle"><span class="data-step" aria-hidden="true">02</span><div><h3 id="exportImageTitle">整月图片与 PDF</h3><p class="form-note">开始日期所在的完整月份。</p>
+        <button class="button button-secondary" type="button" id="exportImageButton" data-action="previewExportMonth" aria-haspopup="dialog"><svg class="icon" aria-hidden="true"><use href="#month-image-icon"></use></svg><span id="exportMonthLabel">预览月历</span></button>
       </div></section>
       <section class="data-section" aria-labelledby="exportCalendarTitle"><span class="data-step" aria-hidden="true">03</span><div><h3 id="exportCalendarTitle">加入系统日历</h3><p class="form-note">生成 .ics 日历文件：iPhone 上会直接打开「日历」添加；安卓手机需要到下载记录里打开，用电脑导入更方便。改了排班后重新导入，同一天的日程会被更新。</p>
         <div class="export-checks"><label><input type="checkbox" id="exportIncludeRest"> 休息日也加入（全天事件）</label><label>上班提醒 <select id="exportAlarm"><option value="0" selected>不提醒</option><option value="15">提前 15 分钟</option><option value="30">提前 30 分钟</option><option value="60">提前 1 小时</option><option value="120">提前 2 小时</option></select></label></div>
         <button class="button button-secondary" type="button" data-action="downloadCalendar">下载日历文件</button>
       </div></section>
-      <section class="data-section desktop-only" aria-labelledby="exportPrintTitle"><span class="data-step" aria-hidden="true">04</span><div><h3 id="exportPrintTitle">打印当前月历</h3><p class="form-note">以浅色版式打印正在查看的月份，也可以在打印窗口中另存为 PDF。</p><button class="button button-secondary" type="button" data-action="printCalendar">打印月历</button></div></section>
       <p class="form-error" id="exportError" role="alert" tabindex="-1" hidden></p><p class="form-note" id="exportStatus" role="status"></p>
       <div class="btn-group"><button class="button button-secondary" type="button" data-action="closeExport">完成</button></div>
     </section>
@@ -350,7 +378,50 @@
       <div class="btn-group"><button class="button button-secondary" id="confirmCancel" type="button">取消</button><button class="button button-primary" id="confirmAccept" type="button">确认删除</button></div>
     </section>
   </div>
+  <div class="modal" id="agendaCopyModal" hidden>
+    <section class="modal-content agenda-copy-content" role="dialog" aria-modal="true" aria-labelledby="agendaCopyTitle" aria-describedby="agendaCopyHint" tabindex="-1">
+      <h2 id="agendaCopyTitle">复制排班</h2>
+      <p class="form-description" id="agendaCopyHint">未能自动复制，排班文字已全选，可手动复制。</p>
+      <div class="form-group"><label for="agendaCopyText">排班文字</label><textarea id="agendaCopyText" readonly spellcheck="false" rows="9" aria-describedby="agendaCopyHint"></textarea></div>
+      <div class="btn-group"><button type="button" class="button button-secondary" id="agendaCopySelect">全选文字</button><button type="button" class="button button-primary" id="agendaCopyClose">完成</button></div>
+    </section>
+  </div>
   <div class="toast" id="toast" role="status" hidden=""></div><noscript><p class="noscript">请启用 JavaScript 以使用排班日历。</p></noscript>
+  <div class="modal" id="monthSheetModal" hidden>
+    <section class="modal-content sheet-dialog" role="dialog" aria-modal="true" aria-labelledby="monthShareTitle" tabindex="-1">
+      <div class="modal-header sheet-tools"><h2 id="monthShareTitle">分享本月</h2><button type="button" class="icon-btn" id="closeMonthSheet" aria-label="关闭月表预览">×</button></div>
+      <div class="sheet-tools sheet-styles" id="monthSheetStyles" role="radiogroup" aria-label="月历导出样式">
+        <button type="button" role="radio" data-paper="classic"><i aria-hidden="true"></i>经典卡片</button>
+        <button type="button" role="radio" data-paper="coast"><i aria-hidden="true"></i>海岸蓝图</button>
+        <button type="button" role="radio" data-paper="bloom"><i aria-hidden="true"></i>花间手札</button>
+        <button type="button" role="radio" data-paper="orbit"><i aria-hidden="true"></i>星轨夜航</button>
+        <button type="button" role="radio" data-paper="plain"><i aria-hidden="true"></i>素白</button>
+      </div>
+      <article class="month-sheet" id="monthSheetPaper" aria-labelledby="monthSheetTitle" tabindex="0">
+        <header class="sheet-heading"><div class="sheet-type"><p class="sheet-brand">清蒸排班</p><p class="sheet-kicker" id="sheetDateline" aria-hidden="true"></p><h3 id="monthSheetTitle"><span id="sheetYear"></span><span id="sheetMonth">月度</span><span class="sheet-title-tail">排班表</span></h3><span class="sheet-meta" id="monthSheetLength"></span></div>
+          <div class="sheet-art" aria-hidden="true"><img data-art="coast" src="assets/sheet-coast.svg?v=26efdd0ae750" alt="" width="360" height="128"><img data-art="bloom" src="assets/sheet-bloom.svg?v=f3514061c3a6" alt="" width="360" height="128"><img data-art="orbit" src="assets/sheet-orbit.svg?v=bdd911e8b0a6" alt="" width="360" height="128"></div></header>
+        <p class="sheet-summary" id="sheetWorkRest"></p>
+        <ul class="sheet-legend" id="monthSheetLegend" aria-label="班次与上下班时间"></ul>
+        <table class="sheet-calendar" aria-labelledby="monthSheetTitle"><thead><tr><th scope="col">周一</th><th scope="col">周二</th><th scope="col">周三</th><th scope="col">周四</th><th scope="col">周五</th><th scope="col">周六</th><th scope="col">周日</th></tr></thead><tbody id="monthSheetRows"></tbody></table>
+        <p class="sheet-footer" id="sheetFooter"></p>
+      </article>
+      <p class="sheet-tools form-note" id="monthPrintStatus" role="status"></p>
+      <button class="sheet-tools sheet-signature" type="button" id="sheetImageSignature" role="switch" aria-checked="false">图片带上我的标题</button>
+      <div class="sheet-tools sheet-actions">
+        <button type="button" class="button button-secondary" id="copyMonthAgenda" title="复制整月排班文字"><svg class="icon" aria-hidden="true"><use href="#agenda-copy-icon"></use></svg>复制整月</button>
+        <button type="button" class="button button-secondary" id="shareMonthAgenda" hidden><svg class="icon" aria-hidden="true"><use href="#month-share-icon"></use></svg>分享文字</button>
+        <button type="button" class="button button-secondary" id="printMonthSheet" title="打印或另存为 PDF"><svg class="icon" aria-hidden="true"><use href="#month-printer-icon"></use></svg>打印 / PDF</button>
+        <button type="button" class="button button-primary" id="createSheetImage" aria-haspopup="dialog"><svg class="icon" aria-hidden="true"><use href="#month-image-icon"></use></svg>生成图片</button>
+      </div>
+    </section>
+  </div>
+  <div class="modal" id="monthImageModal" hidden>
+    <section class="modal-content sheet-dialog" role="dialog" aria-modal="true" aria-labelledby="exportImageTitleText" tabindex="-1">
+      <div class="modal-header sheet-tools"><h2 id="exportImageTitleText">月历图片</h2><button type="button" class="icon-btn" id="closeSheetImage" aria-label="返回月历预览">×</button></div>
+      <div class="sheet-image-scroll" tabindex="0" role="region" aria-label="完整的月历图片"><img id="exportImage" alt=""></div><p class="form-note" id="exportImageHint" role="status"></p>
+      <div class="sheet-actions"><button class="button button-secondary" type="button" id="backToSheet">返回预览</button><button class="button button-primary" type="button" id="downloadMonthImage">下载 PNG</button><button class="button button-primary" type="button" id="exportImageShare" hidden>分享图片</button></div>
+    </section>
+  </div>
 
 
 </body></html>

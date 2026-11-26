@@ -1,6 +1,8 @@
 import Core from './schedule-core.js?v=13e89d9a7889';
 import { FESTIVAL_ART } from './festivals.js?v=d55c00f13e7c';
-export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
+import { agendaTime, bindAgendaCopy } from './agenda.js?v=59c50f669ef4';
+import { bindMonthSheet } from './month-sheet.js?v=6eaae9d77cbf';
+export function createViews({window, ui, schedule, festivals, storage, getImageTitle, onUpdateLive}) {
   const { document, Date } = window;
   const { $, mk, animateElement, motionAllowed, reveal, openDialog, closeDialog } = ui;
   const { getShiftDef, isWorkShift, getCycleIndex, getShift, getLunarDate, formatDateISO, formatDate, getWeekdayCn, isSameDay, addDays, shiftTimeText, getDaysToRest, getUniqueShiftsInCycle, getWorkShifts, calculateNextShifts, calculateMonthlyStats, calculateWorkHours, getConsecutiveShiftDays } = schedule;
@@ -24,6 +26,10 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     end.append(tag,document.createTextNode(` ${def.endTime}`));
     target.replaceChildren(document.createTextNode(`${prefix}${def.startTime} — `),end);
   }
+  let highlightedShift = null, legendRevision = -1;
+  const getMonthStart = () => new Date(viewYear,viewMonth,1);
+  const monthSheet = bindMonthSheet({window,ui,schedule,festivals,storage,getMonthStart,getImageTitle});
+  bindAgendaCopy({window,ui,schedule,getSelectedDate:() => selectedDate,getMonthStart:monthSheet.getStart});
   function renderStats() {
     const stats = calculateMonthlyStats(viewYear, viewMonth);
     const previous = calculateMonthlyStats(viewYear, viewMonth - 1);
@@ -62,11 +68,41 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     $('monthMeta').textContent = `共 ${totalDays} 天 · 工作 ${workDays} 天`;
   }
   function renderLegend() {
-    $('legendContainer').replaceChildren(...getUniqueShiftsInCycle().map(name => {
-      const item = mk('div', {cls:'legend-item'});
-      item.title = `${name} · ${shiftTimeText(name)}`;
-      item.append(makeShiftMark(name,'legend-dot'), mk('span', {text:name})); return item;
+    // Month navigation should not detach the focused legend button.
+    if (legendRevision === schedule.revision) return;
+    legendRevision = schedule.revision;
+    const shifts = getUniqueShiftsInCycle();
+    if (!shifts.includes(highlightedShift)) highlightedShift = null;
+    $('legendContainer').replaceChildren(...[null,...shifts].map(name => {
+      const item = mk('button',{cls:'legend-item',onclick:() => {
+        highlightedShift = highlightedShift === name ? null : name;
+        updateHighlight();
+      }});
+      if (name !== null) {
+        item.dataset.calendarShift = name;
+        item.append(makeShiftMark(name,'legend-dot'));
+      }
+      item.append(mk('span',{cls:'legend-name',text:name ?? '全部'}));
+      item.title = name === null ? '显示全部班次' : `${name} · ${shiftTimeText(name)}`;
+      item.setAttribute('aria-label',name === null ? '全部班次' : `突出显示${name}日期`);
+      item.setAttribute('aria-controls','daysGrid');
+      return item;
     }));
+  }
+  function updateHighlight() {
+    const grid = $('daysGrid');
+    let matches = 0;
+    grid.classList.toggle('has-shift-focus',highlightedShift !== null);
+    for (const cell of grid.querySelectorAll('button')) {
+      const match = cell.dataset.calendarShift === highlightedShift;
+      cell.classList.toggle('shift-match',match);
+      if (match) matches++;
+    }
+    for (const button of $('legendContainer').children) {
+      button.setAttribute('aria-pressed',String((button.dataset.calendarShift ?? null) === highlightedShift));
+    }
+    const status = highlightedShift === null ? '' : `${viewMonth + 1}月${matches ? `有 ${matches} 天` : '没有'}「${highlightedShift}」`;
+    if ($('shiftFocusStatus').textContent !== status) $('shiftFocusStatus').textContent = status;
   }
   function renderCalendar() {
     $('monthTitle').textContent = `${viewYear} 年 ${viewMonth + 1} 月`;
@@ -89,6 +125,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
       const lunar = getLunarDate(date), term = getSolarTerm(date), festival = getHoliday(date);
       const cell = mk('button', {cls:`day-cell shift-${def.cssClass}${today ? ' today' : ''}${selected ? ' selected' : ''}`, onclick:event => showDetail(date,event.currentTarget)});
       cell.dataset.date = formatDateISO(date);
+      cell.dataset.calendarShift = name;
       cell.setAttribute('aria-label', `${formatDate(date)} ${getWeekdayCn(date)} ${name} ${shiftTimeText(name)}${lunar.day ? ` 农历${lunar.monthStr}${lunar.dayStr}` : ''}${term ? ` ${term}` : ''}${festival ? ` ${festival}` : ''}`);
       cell.setAttribute('aria-pressed', String(!!selected));
       if (today) cell.setAttribute('aria-current','date');
@@ -112,6 +149,7 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     const trailingDays = (7 - (firstDow + daysInMonth) % 7) % 7;
     for (let i = 1; i <= trailingDays; i++) appendAdjacent(new Date(viewYear,viewMonth + 1,i));
     $('daysGrid').replaceChildren(fragment);
+    updateHighlight();
     const monthKey = viewYear * 12 + viewMonth;
     if (lastRenderedMonth !== null && lastRenderedMonth !== monthKey) {
       const direction = monthKey > lastRenderedMonth ? 1 : -1;
@@ -174,16 +212,19 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
     $('upcomingList').replaceChildren(...Array.from({length:7},(_,index) => {
       const date = addDays(today,index), name = getShift(date), def = getShiftDef(name);
       const festival = getHoliday(date);
+      const time = agendaTime(schedule,name);
       const row = mk('button',{cls:`upcoming-day${index === 0 ? ' is-today' : ''}`,onclick:event => {
-        navigateMonth(date.getFullYear(),date.getMonth());
+        if (date.getFullYear() !== viewYear || date.getMonth() !== viewMonth) navigateMonth(date.getFullYear(),date.getMonth());
         showDetail(date,event.currentTarget);
       }});
       row.dataset.date = formatDateISO(date);
-      row.setAttribute('aria-label',`${formatDate(date)} ${getWeekdayCn(date)}${festival ? ` ${festival}` : ''} ${name} 查看详情`);
+      row.setAttribute('aria-label',`${formatDate(date)} ${getWeekdayCn(date)}${festival ? ` ${festival}` : ''} ${name}，${time}，查看详情`);
       const dateLabel = mk('span',{cls:'upcoming-date'});
       dateLabel.append(mk('strong',{text:`${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`}),mk('small',{text:index === 0 ? '今天' : index === 1 ? '明天' : getWeekdayCn(date)}));
       const shift = mk('span',{cls:`upcoming-shift ${def.cssClass}`});
-      shift.append(makeShiftMark(name,'shift-dot'),mk('span',{text:name}));
+      const shiftName = mk('span',{cls:'upcoming-shift-name'});
+      shiftName.append(makeShiftMark(name,'shift-dot'),mk('span',{text:name}));
+      shift.append(shiftName,mk('small',{cls:'upcoming-time',text:time}));
       row.title = [festival,shiftTimeText(name)].filter(Boolean).join(' · ');
       row.append(dateLabel,shift);
       if (festival) {
@@ -306,11 +347,20 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   function navigateMonth(year, month) {
     const target = new Date(year,month,1);
     if (target.getFullYear() < minYear() || target.getFullYear() > maxYear()) return;
+    const focusedDate = document.activeElement?.closest('#daysGrid button')?.dataset.date;
     viewYear = target.getFullYear(); viewMonth = target.getMonth(); closeDetail({restoreFocus:false}); render();
+    if (focusedDate) {
+      const cells = $('daysGrid').querySelectorAll('button[data-date]');
+      cells[Math.min(Number(focusedDate.slice(-2)),cells.length)-1].focus({preventScroll:true});
+    }
   }
   function prevMonth() { navigateMonth(viewYear,viewMonth - 1); }
   function nextMonth() { navigateMonth(viewYear,viewMonth + 1); }
-  function backToToday() { const today = new Date(); navigateMonth(today.getFullYear(),today.getMonth()); showDetail(today); }
+  function backToToday() {
+    const today = new Date(), fromButton = document.activeElement === $('backToToday');
+    navigateMonth(today.getFullYear(),today.getMonth());
+    showDetail(today,fromButton ? $('backToToday') : $('daysGrid').querySelector('[aria-current="date"]'));
+  }
 
   // Let the browser own vertical scrolling and pinch zoom; only a deliberate
   // one-finger horizontal gesture on the month grid changes the month.
@@ -385,5 +435,5 @@ export function createViews({window, ui, schedule, festivals, onUpdateLive}) {
   }
   function pickerPrevYear() { if (pickerYear > minYear()) { pickerYear--; renderPicker(); } }
   function pickerNextYear() { if (pickerYear < maxYear()) { pickerYear++; renderPicker(); } }
-  return { renderShiftTime, renderStats, renderLegend, renderCalendar, renderHeatmap, renderNextShifts, renderUpcoming, render, renderDetail, showDetail, moveDetail, updateSelection, closeDetail, openYearOverview, minYear, maxYear, navigateMonth, prevMonth, nextMonth, backToToday, openPicker, closePicker, renderPicker, pickerPrevYear, pickerNextYear, get viewYear() { return viewYear; }, get viewMonth() { return viewMonth; }, get pickerYear() { return pickerYear; } };
+  return { monthSheet, renderShiftTime, renderStats, renderLegend, renderCalendar, renderHeatmap, renderNextShifts, renderUpcoming, render, renderDetail, showDetail, moveDetail, updateSelection, closeDetail, openYearOverview, minYear, maxYear, navigateMonth, prevMonth, nextMonth, backToToday, openPicker, closePicker, renderPicker, pickerPrevYear, pickerNextYear, get viewYear() { return viewYear; }, get viewMonth() { return viewMonth; }, get pickerYear() { return pickerYear; } };
 }
